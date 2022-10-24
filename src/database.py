@@ -613,7 +613,8 @@ player_example = {
     "joined": [datetime.datetime, datetime.datetime],
     "can_vote": False
 
-}        
+}       
+ 
 
 class Archives:
 

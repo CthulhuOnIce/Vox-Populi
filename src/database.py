@@ -2,6 +2,7 @@ import asyncio
 import base64
 import datetime
 from multiprocessing.sharedctypes import Value
+from sys import api_version
 
 import discord
 import motor
@@ -307,6 +308,7 @@ class Motions:
         db = await create_connection("Motions")
         shid = await db.find().to_list(None)
         return shid
+
 
 # The "officers" table lists every officer to have ever held office, and the appropriate 
 # information, such as terms_served_successively, terms_served_total, to determine
@@ -617,6 +619,13 @@ player_example = {
  
 
 class Archives:
+
+
+    async def link_github(user_id, api_response):
+        name = api_response["login"]
+        id = api_response["id"]
+        db = await create_connection("Players")
+        await db.update_one({"_id": user_id}, {"$set": {"github": {"id": id, "last_updated": datetime.datetime.now(), "login": name}}}, upsert=True)
 
     # update player in records, return message total, called in on_message, on_member_update, on_member_join, on_member_leave, etc
     async def update_player(player, increment_messages = False):

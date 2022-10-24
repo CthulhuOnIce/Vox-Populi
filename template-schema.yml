@@ -1,0 +1,276 @@
+Heading:
+  Title: {type: str, required: true, min_length: 8, max_length: 120}
+  Description: {type: str, required: true, min_length: 32, max_length: 384}
+Communication:
+  AnnouncementOnPass: {type: str, required: false, min_length: 8, max_length: 384}
+Constitution:
+  General:
+    MotionLife: {type: int, required: false, min: 1, max: 60}
+    ReferendumLife: {type: int, required: false, min: 1, max: 120}
+    MotionRequirement: {type: float, required: false, min: 0.5, max: 1.0}
+    PreReferendumRequirement: {type: float, required: false, min: 0.5, max: 1.0}
+    ReferendumRequirement: {type: float, required: false, min: 0.5, max: 1.0}
+    # note, voter eligibility requirements only work on new voters and cannot retroactively disqualify voters
+    VoterAccountAge: {type: int, required: false, min: 0, max: 730}
+    VoterMinMessages: {type: int, required: false, min: 0, max: 1000}
+    # Flags
+    ConstitutionReferendum: {type: bool, required: false}  # whether a referendum is required to change the constitution
+    MotionPublicVotes: {type: bool, required: false}  # whether vote totals should be public for a motion that hasn't passed yet
+    ReferendumPublicVotes: {type: bool, required: false}  # whether vote totals should be public for a referendum that hasn't passed yet
+  Guild:
+    Name: {type: str, required: false, max_length: 30} # the name of the guild
+    Description: {type: str, required: false, max_length: 128} # the description of the guild
+    # base64 new icon of the guild, jpg, png, gif
+    Icon: {type: b64, required: false}
+    Banner: {type: b64, required: false}
+    AllowInvites: {type: bool, required: false}
+    # none, low, medium high, highest https://docs.pycord.dev/en/stable/api.html#discord.VerificationLevel
+    VerificationLevel: {type: str, in: [none, low, medium, high, highest], required: false}
+    # discord.gg/{VanityCode}
+    VanityCode: {type: str, max_length: 10, required: false}
+  OfficeRequirements:
+    Legislator:
+      MinimumMessages: {type: int, required: false} # 0 - disabled, anything else - enabled
+      MinimumAge: {type: int, required: false}  # minimum time in days since the user first joined
+      TotalTermLimit: {type: int, required: false}
+      SuccessiveTermLimit: {type: int, required: false}
+Rules:
+  Set:  # set rule text to something else
+    - OldText: The old text
+      NewText: The text to replace the old text with
+  Remove: 
+    - The text of the rule to remove.
+  Prepend:
+    - Add this rule to the beginning of the rule list
+  Append:
+    - Add this rule to the end of the rule list
+Body:
+  - CreateTextChannel:
+      Name: {type: str, required: true, max_length: 100}
+      Clone: {type: t_channel, required: false}  # optional, the name or ID of the channel to clone to make this channel
+  - EditTextChannel:
+      Channel: {type: t_channel, required: true}
+      Name: {type: str, required: false, max_length: 100}
+      Topic: {type: str, required: false, max_length: 128}
+      Position:
+        Absolute: 0  # int, the position of the channel
+        Above: 0  # id of the channel that this channel should be placed above
+        Below: 0  # id of the channel that this channel should be placed below
+      Category: name or ID of the category to add this channel to
+      NSFW: False
+      SlowMode: 0  # int, 0 to 21600 in seconds
+      SyncPermissions: False
+      Overwrites:
+        - Role: Name or ID of a role (or 'everyone')
+          Overwrites:                
+          add_reactions: null # True = Allow, null = default, False = deny
+          attach_files: True
+          create_private_threads: True
+          create_public_threads: True
+          embed_links: True
+          external_emojis: True
+          external_stickers: True
+          manage_emojis: True
+          manage_emojis_and_stickers: True
+          manage_events: True
+          manage_messages: True
+          manage_nicknames: True
+          manage_threads: True
+          manage_webhooks: True
+          mention_everyone: True
+          moderate_members: True
+          read_message_history: True
+          read_messages: True
+          request_to_speak: True
+          send_messages: True
+          send_messages_in_threads: True
+          send_tts_messages: True
+          start_embedded_activities: True
+          use_application_commands: True
+          use_external_emojis: True
+          use_external_stickers: True
+          use_slash_commands: True
+          use_voice_activation: True
+          view_channel: True
+        - Member: ID of a member
+          Overwrites:
+          attach_files: False
+      AddListeners:
+        motion: 5  # channel: threshold
+      DelListeners:
+        - motion
+  - CreateVoiceChannel:
+      Name: Name of the channel to be created
+      Clone:  # optional, name or id of the channel to clone
+  - EditVoiceChannel:
+      Target: Name of a channel made earlier in the bill, or the id of a channel that already exists
+      Name: Optional, new name for the channel
+      Position:
+        Absolute: 0  # int, the position of the channel
+        Above: 0  # id of the channel that this channel should be placed above
+        Below: 0  # id of the channel that this channel should be placed below
+      Category: name or ID of the category to add this channel to
+      UserLimit: 0  # number of users to limit the channel to, set to 0 for default
+      SyncPermissions: False
+      Overwrites:
+        - Role: Name or ID of a role
+          Overwrites:                
+            connect: True
+            deafen_members: True
+            moderate_members: True
+            move_members: True
+            mute_members: True
+            priority_speaker: True
+            request_to_speak: True
+            speak: True
+            stream: True
+            use_voice_activation: True
+          view_channel: True
+        - Member: ID of a member
+          Overwrites:
+            attach_files: False
+      SpecialStatus:
+        PollChannel: True  # the channel that new bills will be mirrored to but cannot be voted on
+  - CreateCategory:
+      Name: Name of the category to be created
+      Clone:  # optional, name or id of the category to clone
+  - EditCategory:
+    Category: name of a category created earlier in the bill, or the id of a category that already exists
+    Name: new Name of the category
+    Position:
+      Absolute: 0  # int, the position of the channel
+      Above: 0  # id of the channel that this channel should be placed above
+      Below: 0  # id of the channel that this channel should be placed below
+    Overwrites:
+      - Role: Name or ID of a role
+        Overwrites:                
+          add_reactions: True
+          administrator: True
+          attach_files: True
+          ban_members: True
+          change_nickname: True
+          connect: True
+          create_instant_invite: True
+          create_private_threads: True
+          create_public_threads: True
+          deafen_members: True
+          embed_links: True
+          external_emojis: True
+          external_stickers: True
+          kick_members: True
+          manage_channels: True
+          manage_emojis: True
+          manage_emojis_and_stickers: True
+          manage_events: True
+          manage_guild: True
+          manage_messages: True
+          manage_nicknames: True
+          manage_permissions: True
+          manage_roles: True
+          manage_threads: True
+          manage_webhooks: True
+          mention_everyone: True
+          moderate_members: True
+          move_members: True
+          mute_members: True
+          priority_speaker: True
+          read_message_history: True
+          read_messages: True
+          request_to_speak: True
+          send_messages: True
+          send_messages_in_threads: True
+          send_tts_messages: True
+          speak: True
+          start_embedded_activities: True
+          stream: True
+          use_application_commands: True
+          use_external_emojis: True
+          use_external_stickers: True
+          use_slash_commands: True
+          use_voice_activation: True
+          view_audit_log: True
+          view_channel: True
+          view_guild_insights: True
+      - Member: ID of a member
+        Overwrites:
+          attach_files: False
+  - DeleteChannel:
+      ID: the ID of the channel to delete, can be a text channel, category, or VC
+  - CreateRole:
+      Name: The name of the role to create
+  - EditRole:
+      Role: name or id of the role to edit
+      Name: New name for the role
+      Color: 0x1
+      Hoist: False # whether to display members above other members
+      Mentionable: False
+      Permissions:
+        add_reactions: True
+        administrator: True
+        attach_files: True
+        change_nickname: True
+        connect: True
+        create_instant_invite: True
+        create_private_threads: True
+        create_public_threads: True
+        deafen_members: True
+        embed_links: True
+        external_emojis: True
+        external_stickers: True
+        manage_channels: True
+        manage_emojis: True
+        manage_emojis_and_stickers: True
+        manage_events: True
+        manage_messages: True
+        manage_nicknames: True
+        manage_permissions: True
+        manage_threads: True
+        manage_webhooks: True
+        mention_everyone: True
+        moderate_members: True
+        move_members: True
+        mute_members: True
+        priority_speaker: True
+        read_message_history: True
+        read_messages: True
+        request_to_speak: True
+        send_messages: True
+        send_messages_in_threads: True
+        send_tts_messages: True
+        speak: True
+        start_embedded_activities: True
+        stream: True
+        use_application_commands: True
+        use_external_emojis: True
+        use_external_stickers: True
+        use_slash_commands: True
+        use_voice_activation: True
+        view_audit_log: True
+        view_channel: True
+        view_guild_insights: True
+      Position:
+        Absolute: 0  # int, the position of the channel
+        Above: 0  # id of the channel that this channel should be placed above
+        Below: 0  # id of the channel that this channel should be placed below
+  - GiveRole:
+      Role:  the ID or name of the role to give or take
+      Members:
+        - 0
+        - 1
+        - 2
+        - 3
+  - TakeRole:
+      Role:  the ID or name of the role to give or take
+      Members:
+        - 0
+        - 1
+        - 2
+        - 3
+  - DeleteRole:
+      ID: The ID of the role to delete, can be a text channel, category, or VC
+  - BanPlayer:
+      ID: ID of the player to ban
+      Reason: Required long reason for banning the player
+  - KickPlayer:
+      ID: ID of the player to kick
+      Reason: Required long reason for kicking the player

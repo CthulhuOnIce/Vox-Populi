@@ -1,0 +1,6 @@
+py-cord
+pyyaml
+motor
+dnspython
+python-dateutil
+gitpython

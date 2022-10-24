@@ -1,0 +1,12 @@
+Heading:
+  Title: The Title of The Motion
+  Description: "The description of the motion. 
+This goes into more detail on the intention and effects, and acts as
+an explainer and first press release."
+Constitution:
+  OfficeRequirements:
+    Legislator:
+      MinimumMessages: 100 # 0 - disabled, anything else - enabled
+      MinimumAge: 0  # minimum time in days since the user first joined
+      TotalTermLimit: 0
+      SuccessiveTermLimit: 0

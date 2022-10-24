@@ -1,0 +1,11 @@
+Heading:
+  Title: Rule Motion
+  Description: "The description of the motion. 
+  This goes into more detail on the intention and effects, and acts as
+  an explainer and first press release."
+  TakeEffectIn: 0  # the number of days after passage to perform the associated actions, set to 0 for instant
+Rules:
+  Add:
+    - This is a rule added by the same motion that edited another rule to 'This rule has been edited'
+  Edit:
+    221022-15609-1: This rule has been edited

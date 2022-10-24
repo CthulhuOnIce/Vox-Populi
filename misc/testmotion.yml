@@ -1,0 +1,95 @@
+Body:
+  - DeleteChannel:
+      ID: 1028490939402043434
+  - CreateCategory:
+      Name: General Commons
+  - EditTextChannel:
+      Channel: 1028176829502193733
+      Category: General Commons
+  - CreateTextChannel:
+      Name: General 2
+  - EditTextChannel:
+      Channel: General 2
+      Category: General Commons
+      Position:
+        Below: 1028176829502193733
+  - CreateVoiceChannel:
+      Name: General VC
+  - EditVoiceChannel:
+      Channel: General VC
+      Category: General Commons
+  - CreateRole:
+      Name: Legislator
+  - EditRole:
+      Role: Legislator
+      Hoist: True
+      Color: 0x6b5b00
+      Permissions:
+        manage_messages: True
+        manage_events: True
+        mention_everyone: True
+      Position:
+        Above: everyone
+  - GiveRole:
+      Role: Legislator
+      Members:
+        - 291321148715696138
+  - CreateCategory:
+      Name: Senate Chambers
+  - EditCategory:
+      Category: Senate Chambers
+      Position:
+        Below: General Commons
+      Overwrites:
+        - Role: everyone
+          Overwrites:
+            view_channel: False
+            connect: False
+            speak: False
+        - Role: Legislator
+          Overwrites:
+            view_channel: True
+            connect: True
+            speak: True
+  - CreateTextChannel:
+      Name: Senate Lounge
+  - EditTextChannel:
+      Channel: Senate Lounge
+      Category: Senate Chambers
+      SyncPermissions: True
+  - CreateTextChannel:
+      Name: Voting Booth
+      Clone: Senate Lounge
+  - CreateVoiceChannel:
+      Name: Senate VC
+  - EditVoiceChannel:
+      Channel: Senate VC
+      Category: Senate Chambers
+      SyncPermissions: True
+  - CreateCategory:
+      Name: Important
+  - EditCategory:
+      Category: Important
+      Position:
+        Above: General Commons
+      Overwrites:
+        - Role: everyone
+          Overwrites:
+            send_messages: False
+            read_message_history: True
+            add_reactions: False
+        - Role: Legislator
+          Overwrites:
+            send_messages: True
+            add_reactions: True
+  - CreateTextChannel:
+      Name: Announcements
+  - EditTextChannel:
+      Channel: Announcements
+      Category: Important
+      SyncPermissions: True
+  - CreateTextChannel:
+      Name: News
+      Clone: Announcements
+
+

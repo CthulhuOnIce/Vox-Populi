@@ -1,0 +1,11 @@
+token: TOKEN HERE
+officer-role: 291321148715696138  # the first, hard-coded officer type 
+auto-update: true  # whether the bot should automatically pull and integrate updates from origin.remote
+no-dirty-repo: true  # true: will not update if repo is dirty (has code changes not from upstream)
+mongodb:
+  url: 'x.y.mongodb.net'
+  username: UNAME HERE
+  password: PW HERE
+  name: DB NAME
+sudoers:  # the first item of this list is considered the bot owner
+  - 905604846839803996

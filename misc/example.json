@@ -1,0 +1,56 @@
+{ // Motions
+    "_id": "221010-166",
+    "Author": 801880841788719114,
+    "Data": {},
+    "Introduced": "10-10-2022 16:00:00",
+    "Expires": "10-17-2022 16:00:00",
+    "Votes": {
+        "Yes": [801880841788719114],
+        "No": [801880841788719114, 291321148715696138, 291321148715696138],
+    }
+}
+
+{ // Offices
+    "_id": "Legislator",
+    "RoleID": 801880841788719114,
+    "Generation": 10,  // "[Generation]th congress"
+    "Election": {
+        "Type": "MAJORITY",
+        "LastElection": "10-10-2022 16:00:00",
+        "NextElection": "10-17-2022 16:00:00",
+        "NextStage":"10-17-2022 16:00:00",
+        "Seats": 1,
+        "Stage": "NONE",
+        "Candidates": [526982674729009180],
+        "Votes": {
+            "526982674729009180": [801880841788719114, 291321148715696138, 291321148715696138],
+        }
+    },
+    "SpecialElection": {
+        "NextStage": "10-17-2022 16:00:00",
+        "Seats": 1,
+        "Status": "NOT_RUNNING",
+        "Candidates": [526982674729009180],
+        "Votes": {
+            "526982674729009180": [801880841788719114, 291321148715696138, 291321148715696138],
+        }
+    }
+}
+
+{   // OfficeHolders
+    "_id": 801880841788719114,
+    "office_id": "Legislator",
+    "InOffice": true,
+    "TermsServed": 1,
+    "TermsServedSuccessively": 1,
+    "TermsMissedSuccessively": 0
+}
+
+{   // Players
+    "_id": 801880841788719114,
+    "Joined": "10-10-2022 16:00:00",
+    "MessageCount": 123,
+    "LastMessage": "10-10-2022 16:00:00",
+    "Status": "ACTIVE"
+}
+

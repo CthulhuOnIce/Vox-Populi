@@ -23,11 +23,16 @@ class Source(commands.Cog):
 
     @slash_command(name='info', description='Get currently running environment and version information.')
     async def info(self, ctx):
+        repo = git.Repo(search_parent_directories=True)
+        latest = repo.head.object
         embed = discord.Embed(title='Info', description='Currently running environment and version information.')
         embed.add_field(name='Python Version', value=f'`{sys.version}`', inline=False)
         embed.add_field(name='Discord Module', value=f'`{discord.__title__} v.{discord.__version__}`', inline=False)
-        embed.add_field(name='Git Commit', value=f'`{git.Repo(search_parent_directories=True).head.object.hexsha}`', inline=False)
-        embed.add_field(name='Git Branch', value=f'`{git.Repo(search_parent_directories=True).active_branch}`', inline=False)
+        embed.add_field(name='Git Commit', value=f'`{latest.hexsha}`', inline=False)
+        embed.add_field(name='Git Commit Author', value=f'`{latest.author}`', inline=False)
+        embed.add_field(name='Git Commit Date', value=f'`{ts.long_text(latest.committed_datetime)}`', inline=False)
+        embed.add_field(name='Git Commit Message', value=f'`{latest.message}`', inline=False)
+        embed.add_field(name='Git Branch', value=f'`{repo.active_branch}`', inline=False)
         uptime = datetime.datetime.now() - C['started']
         embed.add_field(name='Uptime', value=uptime, inline=False)
         await ctx.respond(embed=embed, ephemeral=True)

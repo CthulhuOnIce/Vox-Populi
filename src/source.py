@@ -23,7 +23,7 @@ class Source(commands.Cog):
     async def info(self, ctx):
         embed = discord.Embed(title='Info', description='Currently running environment and version information.')
         embed.add_field(name='Python Version', value=f'`{sys.version}`', inline=False)
-        embed.add_field(name='Discord Module Version', value=f'`{discord.__version__}`', inline=False)
+        embed.add_field(name='Discord Module', value=f'`{discord.__title__} v.{discord.__version__}`', inline=False)
         embed.add_field(name='Git Commit', value=f'`{git.Repo(search_parent_directories=True).head.object.hexsha}`', inline=False)
         embed.add_field(name='Git Branch', value=f'`{git.Repo(search_parent_directories=True).active_branch}`', inline=False)
         uptime = datetime.datetime.now() - C['started']

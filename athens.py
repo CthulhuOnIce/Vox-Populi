@@ -44,7 +44,7 @@ async def on_ready():  # I just like seeing basic info like this
     print(f"Total Servers: {len(bot.guilds)}")
 
 @bot.event
-async def on_command_error(ctx, error):  # share certain errors with the user
+async def on_application_command_error(ctx, error):  # share certain errors with the user
     if isinstance(error, commands.CommandNotFound):
         return
     if isinstance(error, commands.BadArgument):
@@ -58,7 +58,7 @@ async def on_command_error(ctx, error):  # share certain errors with the user
         if isinstance(original, IndexError):
             await ctx.send(f"IndexError: {original}\n[This might mean your search found no results]")
             return
-    await ctx.send("That command caused an error. This has been reported to the developer.")
+    await ctx.respond("That command caused an error. This has been reported to the developer.", ephemeral=True)
     print('Ignoring exception in command {}:'.format(ctx.command), file=sys.stderr)
     traceback.print_exception(type(error), error, error.__traceback__, file=sys.stderr)
     if ctx:

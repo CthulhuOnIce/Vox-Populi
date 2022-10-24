@@ -4,6 +4,7 @@ from typing import Optional
 
 import discord
 import git
+import requests
 from discord import option, slash_command
 from discord.ext import commands, tasks
 
@@ -47,8 +48,8 @@ class Source(commands.Cog):
         if repo.is_dirty() and C["no-dirty-repo"]:  # if there are uncommitted changes, don't update
             print("Did not update, repo is dirty.")
             return
-        if repo.head.object.hexsha == repo.remotes.origin.refs.main.commit.hexsha:
-            print("No change in commit hash, not updating.")
+        if not list(repo.iter_commits('main..origin/main')):
+            print("No missed commits, not updating.")
             return
         # pull changes
         try:

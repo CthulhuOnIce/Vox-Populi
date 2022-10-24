@@ -52,7 +52,7 @@ class Source(commands.Cog):
         if repo.is_dirty() and C["no-dirty-repo"]:  # if there are uncommitted changes, don't update
             print("Did not update, repo is dirty.")
             return
-        if not repo.remotes.origin.fetch()[0].commit == repo.head.commit:  # if there are updates, update
+        if repo.remotes.origin.fetch()[0].commit == repo.head.commit:  # if there are updates, update
             print("No missed commits, not updating.")
             return
         # pull changes

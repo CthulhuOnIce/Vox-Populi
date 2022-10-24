@@ -1,4 +1,5 @@
 import asyncio
+from inspect import getargvalues
 import os
 import subprocess
 import sys
@@ -71,6 +72,10 @@ async def on_application_command_error(ctx, error):  # share certain errors with
         error_log += f"Command: {ctx.command}\n"
         error_log += f"Author: {ctx.author}\n"
         error_log += f"Channel: {ctx.channel}\n"
+        if getattr(ctx, "args", None):
+            error_log += f"Args: {ctx.args}\n"
+        if getattr(ctx, "kwargs", None):
+            error_log += f"Kwargs: {ctx.kwargs}\n"
     else:
         error_log += "No Context\n"
     error_log += f"Traceback:\n{''.join(traceback.format_exception(type(error), error, error.__traceback__))}"

@@ -3,6 +3,7 @@ import os
 import subprocess
 import sys
 import traceback
+from datetime import datetime
 
 import discord
 import yaml
@@ -18,6 +19,8 @@ try:
 except FileNotFoundError:
     print("No config.yml, please copy and rename config-example.yml and fill in the appropriate values.")
     exit()
+
+C["started"] = datetime.now()
 
 feedbacktimeout = []
 

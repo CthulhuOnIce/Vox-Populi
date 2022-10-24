@@ -627,7 +627,9 @@ class Archives:
             insert = {}
             insert["_id"] = player.id
             insert["name"] = [{"name": player.name, "date": datetime.datetime.now()}]
+            insert["nickname"] = [{"name": player.nick, "date": datetime.datetime.now()}]
             insert["display_name"] = [{"name": player.display_name, "date": datetime.datetime.now()}]
+            insert["discriminator"] = [{"name": player.discriminator, "date": datetime.datetime.now()}]
             insert["messages"] = 1
             insert["last_seen"] = datetime.datetime.now()
             insert["joined"] = datetime.datetime.now()
@@ -637,6 +639,8 @@ class Archives:
         
         name = fetched["name"][-1]["name"]
         display_name = fetched["display_name"][-1]["name"]
+        discriminator = fetched["discriminator"][-1]["name"]
+        nickname = fetched["nickname"][-1]["name"]
 
         if display_name != player.display_name:
             update["display_name"] = {"name": player.display_name, "date": datetime.datetime.now()}
@@ -645,6 +649,14 @@ class Archives:
         if name != player.name:
             update["name"] = {"name": player.name, "date": datetime.datetime.now()}
             name = player.name
+
+        if discriminator != player.discriminator:
+            update["discriminator"] = {"name": player.discriminator, "date": datetime.datetime.now()}
+            discriminator = player.discriminator
+        
+        if nickname != player.nick:
+            update["nickname"] = {"name": player.nick, "date": datetime.datetime.now()}
+            nickname = player.nick
 
         if update != {}:
             await db.update_one({"_id": player.id}, {

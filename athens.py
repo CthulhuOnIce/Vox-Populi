@@ -9,7 +9,7 @@ import discord
 import yaml
 from discord.ext import commands
 
-from src import debug, electionmanager, legislation, recordkeeping, source
+from src import debug, electionmanager, legislation, recordkeeping, source, timestamps
 
 # from disputils import BotEmbedPaginator, BotConfirmation, BotMultipleChoice
 
@@ -62,10 +62,21 @@ async def on_application_command_error(ctx, error):  # share certain errors with
             await ctx.send(f"IndexError: {original}\n[This might mean your search found no results]")
             return
     await ctx.respond("That command caused an error. This has been reported to the developer.", ephemeral=True)
-    print('Ignoring exception in command {}:'.format(ctx.command), file=sys.stderr)
-    traceback.print_exception(type(error), error, error.__traceback__, file=sys.stderr)
+    
+    error_log = "\n-----------------Error-----------------\n"
+    error_log += f"Error: {type(error).__name__}: {error}\n"
+    error_log += f"TimeStamp: {timestamps.short_text(datetime.now())}\n"
     if ctx:
-        print(f"Author: {ctx.author}")
-        print(f"Command: {ctx.message.clean_content}")
+        error_log += f"Cog: {ctx.command.cog.__class__.__name__}\n"
+        error_log += f"Command: {ctx.command}\n"
+        error_log += f"Author: {ctx.author}\n"
+        error_log += f"Channel: {ctx.channel}\n"
+    else:
+        error_log += "No Context\n"
+    error_log += f"Traceback:\n{''.join(traceback.format_exception(type(error), error, error.__traceback__))}"
+    # error_log += f"Args: {ctx.args}\n"
+    with open("logs/errors.log", "a+") as a:
+        a.write(error_log)
+    print(error_log)
 
 bot.run(C["token"])

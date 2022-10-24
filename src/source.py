@@ -10,6 +10,8 @@ from discord import option, slash_command
 from discord.ext import commands, tasks
 
 from . import database as db
+from . import quickinputs as qi
+from . import timestamps as ts
 from .news import broadcast
 
 C = {}
@@ -42,6 +44,17 @@ class Source(commands.Cog):
             embed.add_field(name=f"`{commit.hexsha[:6]}` by {commit.author}", value=f'`{commit.message}`', inline=False)
             count += 1
         await ctx.respond(embed=embed, ephemeral=True)
+
+    @slash_command(name='commits', description='List all commits')
+    async def commits(self, ctx):
+        repo = git.Repo(search_parent_directories=True)
+        embeds = []
+        for commit in repo.iter_commits():
+            embed = discord.Embed(title=f'Commit `{commit.hexsha}`', description=f'`{commit.message}`', color=0x00ff00)
+            embed.add_field(name='Author', value=commit.author, inline=False)
+            embed.add_field(name='Date', value=ts.long_text(commit.committed_datetime), inline=False)
+            embeds.append(embed)
+        await qi.PaginateEmbeds(ctx, embeds)
 
     @tasks.loop(hours=0.5)
     async def check_for_updates(self):

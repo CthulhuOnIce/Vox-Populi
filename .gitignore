@@ -9,3 +9,5 @@ bin/*
 lib/*
 .vscode/tasks.json
 .vscode/settings.json
+logs/*
+!logs/.gitkeep

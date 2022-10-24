@@ -52,8 +52,12 @@ class Source(commands.Cog):
         if repo.is_dirty() and C["no-dirty-repo"]:  # if there are uncommitted changes, don't update
             print("Did not update, repo is dirty.")
             return
-        if repo.remotes.origin.fetch()[0].commit == repo.head.commit:  # if there are updates, update
+        remote = repo.remotes.origin.fetch()[0]
+        if remote.commit.hexsha == repo.head.commit.hexsha:  # if there are updates, update
             print("No missed commits, not updating.")
+            return
+        if remote.commit.committed_date < repo.head.commit.committed_date:  # if the remote is older than the local, don't update
+            print("Local commit is newer than remote, not updating.")
             return
         # pull changes
         try:
@@ -61,8 +65,7 @@ class Source(commands.Cog):
             # restart bot
             broadcast(self.bot, "updates", 2, "Restarting bot to upply update...")
             print("Restarting bot to apply updates...")
-            self.bot.logout()
-            self.bot.login()
+            os.execv(sys.executable, [sys.executable] + sys.argv)
         except Exception as e:  # TODO: make this more specific
             print(e)
             return

@@ -32,14 +32,21 @@ Constitution:
     VerificationLevel: 
     # discord.gg/{VanityCode}
     VanityCode: AthensProject
-  OfficeRequirements:
+  Offices:
     Legislator:
-      MinimumMessages: 0 # 0 - disabled, anything else - enabled
-      MinimumAge: 0  # minimum time in days since the user first joined
-      TotalTermLimit: 0
-      SuccessiveTermLimit: 0
-  Events:
-    SnapElections:  # whether or not to hold snap elections when this passes
+      Color: 0x1
+      Name: New Name for the Role
+      Flags:  # overwrites the flags to be only these
+        - can_submit_motions
+      AddFlags:  # adds these flags to the currently existing flag set
+        - can_veto_motions
+      RemFlags:  # removes these flags from the currently existing flag set
+        - can_veto_motions
+      OfficeRequirements:
+        MinimumMessages: 0 # 0 - disabled, anything else - enabled
+        MinimumAge: 0  # minimum time in days since the user first joined
+        TotalTermLimit: 0
+        SuccessiveTermLimit: 0
 Rules:
   Add:
     - This is a new rule that will be added to the bill
@@ -52,7 +59,6 @@ Rules:
     - 221010-46923-4: This will be the new text of the 221010-469230-4 Rule
   Amend:
     - 221010-46923: This will create a new rule under this motion.
-
 Body:
   - CreateTextChannel:
       Name: Name of the channel to be created

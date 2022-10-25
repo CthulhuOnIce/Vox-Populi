@@ -447,7 +447,10 @@ class Motion:
                             return error
                         if error := num_within_threshold(motion_data["Constitution"]["General"][requirement], 1, 0.5):
                             return error
-            
+
+            # TODO: check Offices
+
+            """ 
             if "OfficeRequirements" in motion_data["Constitution"]:
                 if error := search_and_validate(motion_data["Constitution"], "OfficeRequirements", dict):
                     return error
@@ -460,6 +463,7 @@ class Motion:
                             return error
                         if error := num_within_threshold(m_office["MinimumMessages"], 10000, 0):
                             return error
+            """
 
         
         self.validated = True
@@ -509,6 +513,37 @@ class Motion:
                         del general[key]
                 await db.Constitution.broad_update(general)
 
+            if "Offices" in self.data["Constitution"]:
+                for Office in self.data["Constitution"]["Offices"]:
+                    office = self.data["Constitution"]["Offices"][Office]
+                    OF = await db.Elections.get_office(Office)
+                    if not OF: continue  # TODO: error
+
+                    if "Name" in office or "Color" in office:  # role editing
+                        payload = {}
+                        role = await self.guild.get_role(office["roleid"])
+                        # TODO: this means that someone deleted the role, so we should probably delete the office
+                        if not role: continue
+                        if "Name" in office:
+                            payload["name"] = office["Name"]
+                        if "Color" in office:
+                            payload["color"] = office["Color"]
+                        if payload:
+                            await role.edit(**payload)
+                    
+                    if "Flags" in office:
+                        await db.Elections.set_flags(Office, office["Flags"])
+
+                    if "AddFlags" in office:
+                        await db.Elections.add_flags(Office, office["AddFlags"])
+
+                    if "RemFlags" in office:
+                        await db.Elections.rem_flags(Office, office["RemFlags"])  
+
+                    if "OfficeRequirements" in office:
+                        await db.Elections.set_office_requirements_queue(OF, office["OfficeRequirements"])
+            
+            """
             if "OfficeRequirements" in self.data["Constitution"]:
                 for Office in self.data["Constitution"]["OfficeRequirements"]:
                     if await db.Elections.get_office(Office):  # FIXME: Optimize this
@@ -523,6 +558,7 @@ class Motion:
                             await db.Elections.set_office_requirement(Office, "successive_term_limit", OR["SuccessiveTermLimit"])
                     else:
                         return "The office you are trying to edit does not exist."
+            """
 
         if "Rules" in self.data:
             if "Add" in self.data["Rules"]:

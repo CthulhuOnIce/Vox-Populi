@@ -325,6 +325,8 @@ officer_example = {
 ## Electoral Functions
 class Elections:
 
+    valid_flags = ["can_submit_motions", "can_vote_motions", "can_veto_motions"]
+
     async def is_in_office(player_id, office_id):
         player_id = str(player_id)
         db = await create_connection("Officers")
@@ -439,6 +441,37 @@ class Elections:
         office = await db.find_one({"_id": office_id})
         office["restrictions"][requirement] = value
         await db.update_one({"_id": office_id}, {"$set": {"restrictions": office["restrictions"]}})
+
+    async def set_office_requirments_queue(office:dict, requirements:dict):
+        for requirement in requirements:
+            if requirement in office["restrictions"]:
+                office["restrictions_queue"][requirement] = requirements[requirement]
+        db = await create_connection("Offices")
+        await db.update_one({"_id": office["_id"]}, {"$set": {"restrictions_queue": office["restrictions_queue"]}})
+
+    async def set_flags(office_id, flags):
+        db = await create_connection("Offices")
+        write_flags = []
+        for flag in flags:
+            if flag in Elections.valid_flags:
+                write_flags.append(flag)
+        await db.update_one({"_id": office_id}, {"$set": {"flags": write_flags}})
+
+    async def add_flags(office_id, flags):
+        db = await create_connection("Offices")
+        write_flags = []
+        for flag in flags:
+            if flag in Elections.valid_flags:
+                write_flags.append(flag)
+        await db.update_one({"_id": office_id}, {"$addToSet": {"flags": write_flags}})
+    
+    async def rem_flags(office_id, flags):
+        db = await create_connection("Offices")
+        write_flags = []
+        for flag in flags:
+            if flag in Elections.valid_flags:
+                write_flags.append(flag)
+        await db.update_one({"_id": office_id}, {"$pullAll": {"flags": write_flags}})
 
     async def get_office(office_id):
         db = await create_connection("Offices")

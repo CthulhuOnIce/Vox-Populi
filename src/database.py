@@ -115,16 +115,6 @@ rules_example = {
     }
 }
 
-rules_new_example = {  # this is how the rules should be stored in the database (TODO)
-    "_id": "221010-46923",  # this is actually the ID of the motion the rule was created under
-    "rules": [
-        "This is a rule text, it will be identified as 221010-46923-1",
-        "This is another rule text, it will be identified as 221010-46923-2",
-        "This is another rule text, it will be identified as 221010-46923-3"
-    ],
-}
-
-
 class Rules:
 
     async def motion_has_rules(motionid):

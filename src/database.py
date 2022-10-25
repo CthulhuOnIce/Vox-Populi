@@ -32,104 +32,109 @@ async def create_connection(table):
     db = client[C["mongodb"]["name"]]
     return db[table]
 
-# There is no queue here, any change made will be reflected in future motions immediately
-# Nothing here can be office-specific, do that in office["restriction_queue"] and office["restrictions"]
-default_constitution = {
-    "MotionLife": 7,
-    "ReferendumLife": 14,
-    "MotionRequirement": 0.5,  # % of legislators required to pass a motion
-    "ReferendumRequirement": 0.5,  # % of voters required to pass a referendum
-    "PreReferendumRequirement": 0.5,  # % of legislators required to pass a motion that requires a referendum
-    
-    # note, voter eligibility requirements only work on new voters and cannot retroactively disqualify voters
-    "VoterAccountAge": 0,  # 0 to 730: the minimum account age in days
-    "VoterMinMessages": 0,  # 0 to 1000: the minimum number of messages
+class Constitution_:
 
-    # flags
-    "RulesReferendum": False,  # whether or not a referendum is required to change the rules
-    "ConstitutionReferendum": False,  # whether or not a referendum is required to change the constitution
-    "MotionPublicVotes": True,  # whether or not to publicize vote totals before the end of the motion
-    "ReferendumPublicVotes": True,  # whether or not to publicize vote totals before the end of the referendum
-}
+    # There is no queue here, any change made will be reflected in future motions immediately
+    # Nothing here can be office-specific, do that in office["restriction_queue"] and office["restrictions"]
 
-class Constitution:
+    default_constitution = {
+        "MotionLife": 7,
+        "ReferendumLife": 14,
+        "MotionRequirement": 0.5,  # % of legislators required to pass a motion
+        "ReferendumRequirement": 0.5,  # % of voters required to pass a referendum
+        "PreReferendumRequirement": 0.5,  # % of legislators required to pass a motion that requires a referendum
+        
+        # note, voter eligibility requirements only work on new voters and cannot retroactively disqualify voters
+        "VoterAccountAge": 0,  # 0 to 730: the minimum account age in days
+        "VoterMinMessages": 0,  # 0 to 1000: the minimum number of messages
 
-    is_valid_key = lambda key: key in default_constitution
+        # flags
+        "RulesReferendum": False,  # whether or not a referendum is required to change the rules
+        "ConstitutionReferendum": False,  # whether or not a referendum is required to change the constitution
+        "MotionPublicVotes": True,  # whether or not to publicize vote totals before the end of the motion
+        "ReferendumPublicVotes": True,  # whether or not to publicize vote totals before the end of the referendum
+    }
 
-    async def broad_update(arg:dict):
+    def is_valid_key(self, key):
+        return key in self.default_constitution
+
+    async def broad_update(self, arg:dict):
         db = await create_connection("Global")
         for key in arg:
-            if not Constitution.is_valid_key(key):
+            if not self.is_valid_key(key):
                 return False
         db.update_one({"_id": "Constitution"}, {"$set": arg})
         return True
 
-    async def get_constitution():
+    async def get_constitution(self):
         db = await create_connection("Global")
         const = await db.find_one({"_id": "Constitution"})
         if not const:
-            await db.insert_one({"_id": "Constitution", **default_constitution})
-            return default_constitution
-        for key in default_constitution:
+            await db.insert_one({"_id": "Constitution", **self.default_constitution})
+            return self.default_constitution
+        for key in self.default_constitution:
             if key not in const:
-                await db.update_one({"_id": "Constitution"}, {"$set": {key: default_constitution[key]}})
-                const[key] = default_constitution[key]
+                await db.update_one({"_id": "Constitution"}, {"$set": {key: self.default_constitution[key]}})
+                const[key] = self.default_constitution[key]
         return const
 
-    async def get_key(key):
-        if not Constitution.is_valid_key(key):
+    async def get_key(self, key):
+        if not self.is_valid_key(key):
             return False
-        const = await Constitution.get_constitution()
+        const = await self.get_constitution()
         return const[key]
 
-    async def set_key(key, value):
+    async def set_key(self, key, value):
         db = await create_connection("Global")
-        if not Constitution.is_valid_key(key):
+        if not self.is_valid_key(key):
             return False
         await db.update_one({"_id": "Constitution"}, {"$set": {key: value}})
         return True
 
-class StatTracking:
+Constitution = Constitution_()
 
-    async def find_player(player_id):
+class StatTracking_:
+
+    async def find_player(self, player_id):
         player_id = int(player_id)
         db = await create_connection("Players")
         return await db.find_one({"_id": player_id})
 
-    async def remove_player(player_id):
+    async def remove_player(self, player_id):
         db = await create_connection("Players")
-        found = await StatTracking.find_player(player_id)
+        found = await self.find_player(player_id)
         if found is not None:
             await db.update_one({"_id": player_id}, {"$set": {"left": datetime.datetime.now()}})
     
-    async def increment_daily_messages():
+    async def increment_daily_messages(self):
         db = await create_connection("Global")
-        await db.update_one({"_id": "MonthlyStats"}, {"$inc": {f"{datetime.datetime.now().strftime('%m-%d')}.count": 1}})
+        await db.update_one({"_id": "MonthlyStats"}, {"$inc": {f"{datetime.datetime.now().strftime('%m-%d')}.count": 1}}, upsert=True)
 
+StatTracking = StatTracking_()
 
-rules_example = {
-    "_id": "221010-46923",  # this is actually the ID of the motion the rule was created under
-    "rules": {
-        "221010-46923-1": "This is a rule text, it will be identified as 221010-46923-1",
-        "221010-46923-2": "This is another rule text, it will be identified as 221010-46923-2"
+class Rules_:
+
+    rules_example = {
+        "_id": "221010-46923",  # this is actually the ID of the motion the rule was created under
+        "rules": {
+            "221010-46923-1": "This is a rule text, it will be identified as 221010-46923-1",
+            "221010-46923-2": "This is another rule text, it will be identified as 221010-46923-2"
+        }
     }
-}
 
-class Rules:
-
-    async def motion_has_rules(motionid):
+    async def motion_has_rules(self, motionid):
         db = await create_connection("Rules")
         motion = await db.find_one({"_id": motionid})
         if not motion:
             return False
         return True
 
-    async def get_all_rules(): # -> {}
+    async def get_all_rules(self): # -> {}
         db = await create_connection("Rules")
         rules_from_db = await db.find({}).to_list(None)
         return rules_from_db
 
-    async def get_rule_by_id(ruleid):
+    async def get_rule_by_id(self, ruleid):
         if len(ruleid.split("-")) != 3:
             return
         rootmotion = ruleid.split("-")[0] + "-" + ruleid.split("-")[1]
@@ -141,14 +146,14 @@ class Rules:
             return
         return motion["rules"][ruleid]
     
-    async def get_rules_from_motion(motionid):
+    async def get_rules_from_motion(self, motionid):
         db = await create_connection("Rules")
         motion = await db.find_one({"_id": motionid})
         if not motion:
             return
         return motion["rules"]
 
-    async def edit_rule(ruleid, new_text):
+    async def edit_rule(self, ruleid, new_text):
         if len(ruleid.split("-")) != 3:
             return
         rootmotion = ruleid.split("-")[0] + "-" + ruleid.split("-")[1]
@@ -158,14 +163,14 @@ class Rules:
             return
         await db.update_one({"_id": rootmotion}, {"$set": {f"rules.{ruleid}": new_text}})
     
-    async def add_rule(motion_id, text):
+    async def add_rule(self, motion_id, text):
         db = await create_connection("Rules")
         motion = await db.find_one({"_id": motion_id})
         if not motion:
             return
         await db.update_one({"_id": motion_id}, {"$set": {f"rules.{motion_id}-{len(motion['rules']) + 1}": text}})
 
-    async def set_rules(motion_id, motion_title, rules:list):
+    async def set_rules(self, motion_id, motion_title, rules:list):
         db = await create_connection("Rules")
         new_rule = {"_id": motion_id, "rules": {}, "motion_title": motion_title}
         index = 0
@@ -174,7 +179,7 @@ class Rules:
             new_rule["rules"][f"{motion_id}-{index}"] = rule
         await db.insert_one(new_rule)
 
-    async def remove_rule(ruleid: str):
+    async def remove_rule(self, ruleid: str):
         if len(ruleid.split("-")) == 3:  # deleting the specific rule
             rootmotion = ruleid.split("-")[0] + "-" + ruleid.split("-")[1]
             db = await create_connection("Rules")
@@ -192,9 +197,11 @@ class Rules:
             await db.delete_one({"_id": ruleid})
             return
 
-class Motions:
+Rules = Rules_()
+
+class Motions_:
     
-    def passratio(yea:int, nay:int):
+    def passratio(self, yea:int, nay:int):
         if yea == 0 and nay == 0:
             return 0.0
         elif yea == 0:
@@ -203,23 +210,23 @@ class Motions:
             1.0
         return yea / (yea + nay)
 
-    async def motion_requires_referendum(motion_data:dict):
+    async def motion_requires_referendum(self, motion_data:dict):
         if "Constitution" in motion_data and await Constitution.get_key("ConstitutionReferendum"):
             return True
         if "Rules" in motion_data and await Constitution.get_key("RulesReferendum"):
             return True
         return False
 
-    async def force_expire_motion(motion_id:str):
+    async def force_expire_motion(self, motion_id:str):
         db = await create_connection("Motions")
         await db.update_one({"_id": motion_id}, {"$set": {"expires": datetime.datetime.now()}})
 
-    async def get_active_motion(motion_id:str):
+    async def get_active_motion(self, motion_id:str):
         db = await create_connection("Motions")
         # return await db.find_one({"_id": motion_id, "expires": {"$gt": datetime.datetime.now()}})
         return await db.find_one({"_id": motion_id})  
 
-    async def generate_motion_id():
+    async def generate_motion_id(self):
         db = await create_connection("Motions")
         now = datetime.datetime.now()
         append = now.strftime("%f")[-3:]
@@ -232,7 +239,7 @@ class Motions:
     # it's probably slower, but motion objects don't know their own id
     # perhaps you should be able to pass a motion from the database to create a motion object
     # as opposed to just the body of the motion
-    async def motion_to_referendum(motion_id:str):
+    async def motion_to_referendum(self, motion_id:str):
         db = await create_connection("Motions")
         motion = await db.find_one({"_id": motion_id})
         new_motion = motion.copy()
@@ -259,14 +266,14 @@ class Motions:
             await db.insert_one(new_motion)
             return new_motion
 
-    async def submit_new_motion(author:int, motion:dict, motion_raw:str):
+    async def submit_new_motion(self, author:int, motion:dict, motion_raw:str):
         now = datetime.datetime.now()
-        motion_id = await Motions.generate_motion_id()
+        motion_id = await self.generate_motion_id()
         db = await create_connection("Motions")
         dbo = await create_connection("Officers")
         await dbo.update_one({"_id": author}, {"$inc": {"stats.motions_submitted": 1}})
         life = await Constitution.get_key("MotionLife")
-        passratio = await Constitution.get_key("PreReferendumRequirement") if await Motions.motion_requires_referendum(motion) else await Constitution.get_key("MotionRequirement")
+        passratio = await Constitution.get_key("PreReferendumRequirement") if await self.motion_requires_referendum(motion) else await Constitution.get_key("MotionRequirement")
         insertme = {
             "_id": motion_id,
             "author": author,
@@ -286,7 +293,7 @@ class Motions:
         await db.insert_one(insertme)
         return motion_id
 
-    async def cast_motion_vote_simple(player_id, motion_id, vote): # returns False if already voted, casts vote if not already voted
+    async def cast_motion_vote_simple(self, player_id, motion_id, vote): # returns False if already voted, casts vote if not already voted
         db = await create_connection("Motions")
         motion = await db.find_one({"_id": motion_id})
         if player_id in motion["voters"]:
@@ -294,17 +301,17 @@ class Motions:
         await db.update_one({"_id": motion_id}, {"$addToSet": {f"votes.{vote}": player_id, "voters": player_id}})
         return True
 
-    async def get_active_motions():
+    async def get_active_motions(self):
         db = await create_connection("Motions")
         shid = await db.find().to_list(None)
         return shid
+
+Motions = Motions_()
 
 
 # The "officers" table lists every officer to have ever held office, and the appropriate 
 # information, such as terms_served_successively, terms_served_total, to determine
 # whether or not they are eligible for re-election or to run for a higher office.
-
-
 officer_example = {
     "_id": 123456789012345678,  # player id
     "office_id": "Legislator",  # office id
@@ -323,20 +330,20 @@ officer_example = {
 }
 
 ## Electoral Functions
-class Elections:
+class Elections_:
 
     valid_flags = ["can_submit_motions", "can_vote_motions", "can_veto_motions"]
 
-    async def is_in_office(player_id, office_id):
+    async def is_in_office(self, player_id, office_id):
         player_id = str(player_id)
         db = await create_connection("Officers")
         return await db.find_one({"_id": player_id, "office_id": office_id, "last_term_end": None}) is not None
 
-    async def enable_vote(player_id):
+    async def enable_vote(self, player_id):
         db = await create_connection("Players")
         await db.update_one({"_id": player_id}, {"$set": {"can_vote": True}})
 
-    async def populate_offices():
+    async def populate_offices(self):
         db = await create_connection("Offices")
         insert =  {
             "_id": "Legislator",
@@ -379,21 +386,21 @@ class Elections:
         }
         await db.insert_one(insert)
 
-    async def player_has_flag(user_id, flag):
+    async def player_has_flag(self, user_id, flag):
         db = await create_connection("Officers")
         db.find_one({"_id": user_id, "flags": flag})
         return await db.find_one({"_id": user_id, "flags": flag}) is not None
 
-    async def remove_offices():
+    async def remove_offices(self):
         db = await create_connection("Offices")
         await db.drop()
 
-    async def apply_restriction_queue(office_id):
+    async def apply_restriction_queue(self, office_id):
         db = await create_connection("Offices")
         office = await db.find_one({"_id": office_id})
         await db.update_one({"_id": office_id}, {"$set": {"restrictions": office["restrictions_queue"]}})
 
-    async def get_election_winners(office_id):
+    async def get_election_winners(self, office_id):
         db = await create_connection("Offices")
         office = await db.find_one({"_id": office_id})
         if office["regular_elections"]["type"] == "simple":  # sort based on number of votes, then trim for top seats
@@ -416,68 +423,68 @@ class Elections:
                         winners.append(candidate)
             return winners[:office["regular_elections"]["seats"]]
 
-    async def reset_votes(office_id):
+    async def reset_votes(self, office_id):
         db = await create_connection("Offices")
         await db.update_one({"_id": office_id}, {"$set": {"regular_elections.votes": {}, "regular_elections.candidates": [], "regular_elections.voters": []}})
 
-    async def set_election_stage(office_id, next_stage, stage_id):
+    async def set_election_stage(self, office_id, next_stage, stage_id):
         db = await create_connection("Offices")
         office = await db.find_one({"_id": office_id})
         office["regular_elections"]["stage"] = stage_id
         office["regular_elections"]["next_stage"] = next_stage
         await db.update_one({"_id": office_id}, {"$set": {"regular_elections": office["regular_elections"]}})
 
-    async def set_last_election(office_id, date):
+    async def set_last_election(self, office_id, date):
         db = await create_connection("Offices")
         await db.update_one({"_id": office_id}, {"$set": {"regular_elections.last_election": date}})
 
-    async def get_all_offices():
+    async def get_all_offices(self):
         db = await create_connection("Offices")
         found = db.find()
         return await found.to_list(None)
 
-    async def set_office_requirement(office_id, requirement, value):
+    async def set_office_requirement(self, office_id, requirement, value):
         db = await create_connection("Offices")
         office = await db.find_one({"_id": office_id})
         office["restrictions"][requirement] = value
         await db.update_one({"_id": office_id}, {"$set": {"restrictions": office["restrictions"]}})
 
-    async def set_office_requirments_queue(office:dict, requirements:dict):
+    async def set_office_requirments_queue(self, office:dict, requirements:dict):
         for requirement in requirements:
             if requirement in office["restrictions"]:
                 office["restrictions_queue"][requirement] = requirements[requirement]
         db = await create_connection("Offices")
         await db.update_one({"_id": office["_id"]}, {"$set": {"restrictions_queue": office["restrictions_queue"]}})
 
-    async def set_flags(office_id, flags):
+    async def set_flags(self, office_id, flags):
         db = await create_connection("Offices")
         write_flags = []
         for flag in flags:
-            if flag in Elections.valid_flags:
+            if flag in self.valid_flags:
                 write_flags.append(flag)
         await db.update_one({"_id": office_id}, {"$set": {"flags": write_flags}})
 
-    async def add_flags(office_id, flags):
+    async def add_flags(self, office_id, flags):
         db = await create_connection("Offices")
         write_flags = []
         for flag in flags:
-            if flag in Elections.valid_flags:
+            if flag in self.valid_flags:
                 write_flags.append(flag)
         await db.update_one({"_id": office_id}, {"$addToSet": {"flags": write_flags}})
     
-    async def rem_flags(office_id, flags):
+    async def rem_flags(self, office_id, flags):
         db = await create_connection("Offices")
         write_flags = []
         for flag in flags:
-            if flag in Elections.valid_flags:
+            if flag in self.valid_flags:
                 write_flags.append(flag)
         await db.update_one({"_id": office_id}, {"$pullAll": {"flags": write_flags}})
 
-    async def get_office(office_id):
+    async def get_office(self, office_id):
         db = await create_connection("Offices")
         return await db.find_one({"_id": office_id})
 
-    async def make_candidate(player_id, office):
+    async def make_candidate(self, player_id, office):
         db = await create_connection("Offices")
         # add player id to regular_elections["candidates"] in office
         office = await db.find_one({"_id": office})
@@ -491,7 +498,7 @@ class Elections:
             return True
         return False
 
-    async def drop_candidate(player_id, office):
+    async def drop_candidate(self, player_id, office):
         db = await create_connection("Offices")
         # remove player id from regular_elections["candidates"] in office
         office = await db.find_one({"_id": office})
@@ -500,7 +507,7 @@ class Elections:
             return True
         return False
 
-    async def cast_vote_simple(player_id, office_id, candidate_id): # returns False if already voted, casts vote if not already voted
+    async def cast_vote_simple(self, player_id, office_id, candidate_id): # returns False if already voted, casts vote if not already voted
         db = await create_connection("Offices")
         office = await db.find_one({"_id": office_id})
         for candidate in office["regular_elections"]["candidates"]:
@@ -510,40 +517,38 @@ class Elections:
         await db.update_one({"_id": office_id}, {"$set": {"regular_elections": office["regular_elections"]}})
         return True
 
-    async def add_voter(player_id, office_id):
+    async def add_voter(self, player_id, office_id):
         db = await create_connection("Offices")
         await db.update_one({"_id": office_id}, {"$addToSet": {"regular_elections.voters": player_id}})
 
-
-    async def remove_voter(player_id, office_id):  # called when a player leaves the server or cancels their vote
+    async def remove_voter(self, player_id, office_id):  # called when a player leaves the server or cancels their vote
         db = await create_connection("Offices")
         office = await db.find_one({"_id": office_id})
         office["regular_elections"]["voters"].remove(player_id)
         await db.update_one({"_id": office_id}, {"$set": {"regular_elections": office["regular_elections"]}})
 
-    async def increment_terms_missed(player_id):
+    async def increment_terms_missed(self, player_id):
         db = await create_connection("Officers")
         await db.update_one({"_id": player_id}, {"$inc": {"terms_missed_successively": 1}, "$set": {"terms_served_successively": 0}})
 
-    async def is_officer(player_id, office_id):
+    async def is_officer(self, player_id, office_id):
         db = await create_connection("Officers")
         return await db.find_one({"_id": str(player_id), "last_term_end": None, "office_id": office_id})
     
     # check if a player is currently in an office which has this flag enabled
-    async def player_has_flag(player_id, flag):
+    async def player_has_flag(self, player_id, flag):
         db = await create_connection("Officers")
         officer = await db.find_one({"_id": str(player_id), "last_term_end": None})
         if officer:
-            office = await Elections.get_office(officer["office_id"])
+            office = await self.get_office(officer["office_id"])
             if flag in office["flags"]:
                 return True
         return False
-        
 
-    async def set_new_officer(officer:int, office_id:str):
-        Elections.set_new_officers([officer], office_id, demote_others=False)
+    async def set_new_officer(self, officer:int, office_id:str):
+        self.set_new_officers([officer], office_id, demote_others=False)
 
-    async def set_new_officers(officers:list, office_id:str, demote_others = True):
+    async def set_new_officers(self, officers:list, office_id:str, demote_others = True):
         db = await create_connection("Officers")
         dbo = await create_connection("Offices")
         office = await dbo.find_one({"_id": office_id})
@@ -568,25 +573,25 @@ class Elections:
         if demote_others:
             for incombent in db.find({"last_term_end": None}):
                 if incombent["_id"] not in officers:
-                    await Elections.remove_officer(incombent["_id"], office_id)
+                    await self.remove_officer(incombent["_id"], office_id)
             # reset terms_served_successively for all officers who have gone at least half a term without being in office
             # makes it so that you cant just drop out and run again to bypass term limits
             # and cyclically resets everyones terms_served_successively
             for officer in db.find({"last_term_end": {"$lt": datetime.datetime.now() - datetime.timedelta(days=office["regular_elections"]["term_length"]/2)}, "terms_served_successively": {"$gt": 0}}):
-                await Elections.reset_terms_served_successfully(officer["_id"])
+                await self.reset_terms_served_successfully(officer["_id"])
             await dbo.update_one({"_id": office_id}, {"$inc": {"generations": 1}})
         # dbo.update_one({"_id": office_id}, {"$set": {"regular_elections.stage": "none"}})
 
-    async def remove_officer(player_id, office_id):
+    async def remove_officer(self, player_id, office_id):
         db = await create_connection("Officers")
         await db.update_one({"_id": player_id, "office_id": office_id, "last_term_end": None}, {"$set": {"last_term_end": datetime.datetime.now()}})
     
-    async def reset_terms_served_successfully(player_id):
+    async def reset_terms_served_successfully(self, player_id):
         db = await create_connection("Officers")
         if await db.find_one({"_id": player_id}):
             await db.update_one({"_id": player_id}, {"$set": {"terms_served_successively": 0}})
     
-    async def is_eligible_for_office(candidate_id, office_id):
+    async def is_eligible_for_office(self, candidate_id, office_id):
 
         player = await  create_connection("Players")
         player = await player.find_one({"_id": candidate_id})
@@ -612,12 +617,15 @@ class Elections:
                 return False
         return True
 
+Elections = Elections_()
+
 ## Listener functions
-class Radio:
-    async def frequencies():
+class Radio_:
+
+    async def frequencies(self):
         return [i["_id"] for i in await create_connection("Radio").find().to_list(None)]
 
-    async def get_targets_for_frequency(frequency, importance=1):
+    async def get_targets_for_frequency(self, frequency, importance=1):
         db = await create_connection("Radio")
         # find all keys with a value of less than or equal to the importance
         freq = await db.find_one({"_id": frequency})
@@ -631,7 +639,7 @@ class Radio:
                 ret.append(int(key))
         return ret
 
-    async def add_listener(send_id, news_code, importance):
+    async def add_listener(self, send_id, news_code, importance):
         db = await create_connection("Radio")
         freq = await db.find_one({"_id": news_code})
         if freq is None:
@@ -639,10 +647,11 @@ class Radio:
             await db.insert_one(freq)
         await db.update_one({"_id": news_code}, {"$set": {f"channels.{send_id}": importance}})
 
-    async def del_listener(send_id, news_code):
+    async def del_listener(self, send_id, news_code):
         db = await create_connection("Radio")
         await db.update_one({"_id": send_id}, {"$pull": {"channels": news_code}})
 
+Radio = Radio_()
 
 # Example player document
 player_example = {
@@ -658,17 +667,16 @@ player_example = {
 }       
  
 
-class Archives:
+class Archives_:
 
-
-    async def link_github(user_id, api_response):
+    async def link_github(self, user_id, api_response):
         name = api_response["login"]
         id = api_response["id"]
         db = await create_connection("Players")
         await db.update_one({"_id": user_id}, {"$set": {"github": {"id": id, "last_updated": datetime.datetime.now(), "login": name}}}, upsert=True)
 
     # update player in records, return message total, called in on_message, on_member_update, on_member_join, on_member_leave, etc
-    async def update_player(player, increment_messages = False):
+    async def update_player(self, player, increment_messages = False):
         db = await create_connection("Players")
         update = {}
 
@@ -718,7 +726,7 @@ class Archives:
         return fetched["messages"] + 1 if increment_messages else fetched["messages"]
 
 
-    async def archive_motion(motion_id, status):  # called after motion is killed, either after execution or withdrawal
+    async def archive_motion(self, motion_id, status):  # called after motion is killed, either after execution or withdrawal
         # withdrawn - they withdrew the motion voluntarily
         # rejected - the motion failed to validate and was nullified
         if status not in ["passed", "failed", "withdrawn", "rejected"]:
@@ -734,11 +742,11 @@ class Archives:
         await db_archive.insert_one(motion)
         await db_live.delete_one({"_id": motion_id})
 
-    async def get_archived_motion(motion_id):
+    async def get_archived_motion(self, motion_id):
         db = await create_connection("Archive-Motions")
         return await db.find_one({"_id": motion_id})
         
-    async def archive_election(office_id, winners):  # called after election is finished but before data is cleared
+    async def archive_election(self, office_id, winners):  # called after election is finished but before data is cleared
 
         winners = [int(winner) for winner in winners]
 
@@ -776,6 +784,9 @@ class Archives:
 
         await db_archive.insert_one(archive)
 
+Archives = Archives_()
+
+# This can reconstruct a player from any point in time given datetime
 class ReconstructedPlayer:
     
     display_name            = None
@@ -815,4 +826,4 @@ class ReconstructedPlayer:
 
         if member := guild.get_member(player_id) and not time:
             self.is_in_guild = True
-            await Archives.update_player(member)
+            await self.update_player(member)

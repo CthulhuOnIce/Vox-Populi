@@ -133,16 +133,22 @@ class EmbedPaginator(discord.ui.View):
         await interaction.response.defer()
         self.index = min(self.index + 1, len(self.embeds) - 1)
         await self.redraw()
+    
+    async def shutdown(self):
+        for child in self.children:
+            child.disabled = True
+        self.cancelled = True
+        await self.redraw()
+        self.stop()
 
     @discord.ui.button(label="End", style=discord.ButtonStyle.red)
     async def end(self, button: discord.ui.Button, interaction: discord.Interaction):
         await interaction.response.defer()
-        self.cancelled = True
-        self.stop()
+        await self.shutdown()
 
     async def on_timeout(self):
         self.cancelled = True
-        self.stop()
+        await self.shutdown()
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         return await super().interaction_check(interaction) and interaction.user == self.ctx.author

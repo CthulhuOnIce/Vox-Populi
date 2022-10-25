@@ -349,6 +349,7 @@ class Elections:
         insert =  {
             "_id": "Legislator",
             "roleid": C["officer-role"],
+            "flags": ["can_submit_motions", "can_vote_motions"],
             "generations": 0,
             "restrictions_queue": {  # gets copied into restrictions at the end of the next election
                 "min_messages": 0,
@@ -385,6 +386,11 @@ class Elections:
             }
         }
         await db.insert_one(insert)
+
+    async def player_has_flag(user_id, flag):
+        db = await create_connection("Officers")
+        db.find_one({"_id": user_id, "flags": flag})
+        return await db.find_one({"_id": user_id, "flags": flag}) is not None
 
     async def remove_offices():
         db = await create_connection("Offices")
@@ -499,6 +505,17 @@ class Elections:
     async def is_officer(player_id, office_id):
         db = await create_connection("Officers")
         return await db.find_one({"_id": str(player_id), "last_term_end": None, "office_id": office_id})
+    
+    # check if a player is currently in an office which has this flag enabled
+    async def player_has_flag(player_id, flag):
+        db = await create_connection("Officers")
+        officer = await db.find_one({"_id": str(player_id), "last_term_end": None})
+        if officer:
+            office = await Elections.get_office(officer["office_id"])
+            if flag in office["flags"]:
+                return True
+        return False
+        
 
     async def set_new_officer(officer:int, office_id:str):
         Elections.set_new_officers([officer], office_id, demote_others=False)

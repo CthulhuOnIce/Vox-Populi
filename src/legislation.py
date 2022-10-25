@@ -25,9 +25,8 @@ class Legislation(commands.Cog):
     @slash_command(name='submotion', description='Submit a new motion.')
     # @commands.custom_check(is_legislator)
     async def submotion(self, ctx):
-        if not await db.Elections.is_officer(ctx.author.id, "Legislator"):
-            await ctx.respond("You are not a legislator.", ephemeral=True)
-            return
+        if not await db.Elections.player_has_flag(ctx.author.id, 'can_submit_motions'):
+            return await ctx.send('You do not have permission to submit motions.')
         if ctx.author.id in writers_room:
             await ctx.respond("You are already writing a motion.", ephemeral=True)
             return
@@ -63,10 +62,10 @@ class Legislation(commands.Cog):
             return
 
         if motion["votetype"] != "referendum":
-            if not await db.Elections.is_officer(ctx.author.id, "Legislator"):
+            if not await db.Elections.player_has_flag(ctx.author.id, "can_vote_motions"):
                 await ctx.respond("This motion is not a referendum.", ephemeral=True)
                 return
-            
+
         if motion["votetype"] == "simple" or motion["votetype"] == "referendum":
             if ctx.author.id in motion["voters"]:
                 await ctx.respond("You have already voted on this motion.", ephemeral=True)

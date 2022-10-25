@@ -542,23 +542,6 @@ class Motion:
 
                     if "OfficeRequirements" in office:
                         await db.Elections.set_office_requirements_queue(OF, office["OfficeRequirements"])
-            
-            """
-            if "OfficeRequirements" in self.data["Constitution"]:
-                for Office in self.data["Constitution"]["OfficeRequirements"]:
-                    if await db.Elections.get_office(Office):  # FIXME: Optimize this
-                        OR = self.data["Constitution"]["OfficeRequirements"][Office]
-                        if "MinimumMessages" in OR:
-                            await db.Elections.set_office_requirement(Office, "min_messages", OR["MinimumMessages"])
-                        if "MinimumAge" in OR:
-                            await db.Elections.set_office_requirement(Office, "min_age_days", OR["MinimumAge"])
-                        if "TotalTermLimit" in OR:
-                            await db.Elections.set_office_requirement(Office, "total_term_limit", OR["TotalTermLimit"])
-                        if "SuccessiveTermLimit" in OR:
-                            await db.Elections.set_office_requirement(Office, "successive_term_limit", OR["SuccessiveTermLimit"])
-                    else:
-                        return "The office you are trying to edit does not exist."
-            """
 
         if "Rules" in self.data:
             if "Add" in self.data["Rules"]:

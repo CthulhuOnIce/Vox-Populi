@@ -48,8 +48,8 @@ default_constitution = {
     # flags
     "RulesReferendum": False,  # whether or not a referendum is required to change the rules
     "ConstitutionReferendum": False,  # whether or not a referendum is required to change the constitution
-    "MotionPublicVotes": True,  # whether or not to publicize vote totals before the end of the motion  # TODO: implement
-    "ReferendumPublicVotes": True,  # whether or not to publicize vote totals before the end of the referendum  # TODO: implement
+    "MotionPublicVotes": True,  # whether or not to publicize vote totals before the end of the motion
+    "ReferendumPublicVotes": True,  # whether or not to publicize vote totals before the end of the referendum
 }
 
 class Constitution:

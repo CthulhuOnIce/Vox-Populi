@@ -223,7 +223,6 @@ class RecordKeeping(commands.Cog):
             return
         # TODO: add to daily message count
         messages = await db.Archives.update_player(message.author, True)
-        print(f"messages should have incremented {messages}")
         player = await db.StatTracking.find_player(message.author.id)
         if not player["can_vote"]:
             const = await db.Constitution.get_constitution()

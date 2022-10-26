@@ -106,6 +106,10 @@ class Office:
                 self.election_manager = ElectionManager(self, office["regular_elections"])
             elif office["regular_elections"]["type"] == "ranked_choice":
                 self.election_manager = RankedChoice(self, office["regular_elections"])
+            elif office["regular_elections"]["type"] == "challenger":  # TODO: implement challenger elections
+                pass
+            elif office["regular_elections"]["type"] == "approval":  # TODO: implement approval elections
+                pass
             else:
                 raise Exception("Unknown election style: " + office["regular_elections"]["type"])
 
@@ -116,13 +120,19 @@ class Office:
         self.role = self.guild.get_role(office["role_id"])
         self.generataion = office["generations"]
 
-
         for officer in await db.Elections.get_officers(office_id):
             user = self.guild.get_member(officer["user_id"])
             if not user:  pass # User left the server, TODO: remove from office
             self.members.append(user)
 
         Offices.append(self)
+
+    async def get_winners(self):
+        return
+    
+    async def appoint_winners(self):
+        winners = await self.get_winners()
+        return
     
     async def database(self):
         return await db.get_office(self.name)

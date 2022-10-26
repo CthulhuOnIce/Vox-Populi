@@ -449,6 +449,13 @@ class Elections_:
         found = await db.find_all({"office_id": office_id, "last_term_end": None}).to_list(None)
         return found
 
+    async def set_office_requirements(self, office:dict, requirements:dict):
+        for requirement in requirements:
+            if requirement in office["restrictions_queue"]:
+                office["restrictions"][requirement] = requirements[requirement]
+        db = await create_connection("Offices")
+        await db.update_one({"_id": office["_id"]}, {"$set": {"restrictions": office["restrictions"]}})
+
     async def set_office_requirments_queue(self, office:dict, requirements:dict):
         for requirement in requirements:
             if requirement in office["restrictions"]:

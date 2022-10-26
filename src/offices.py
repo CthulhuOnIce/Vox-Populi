@@ -38,7 +38,15 @@ class Office:
 
     async def set_future_limit(self, requirements:dict):
         database = self.database()
-        db.Elections.set_office_requirements_queue(database, requirements)
+        db.Elections.set_office_requirments_queue(database, requirements)
+
+    async def apply_restrictions_queue(self):
+        database = self.database()
+        self.min_age_days = database["requirements_queue"]["min_age_days"]
+        self.min_messages = database["requirements_queue"]["min_messages"]
+        self.total_term_limit = database["requirements_queue"]["total_term_limit"]
+        self.successive_term_limit = database["requirements_queue"]["successive_term_limit"]
+        await db.Elections.set_office_requirements(database, database["requirements_queue"])
     
     def is_officer(self, member):
         return member in self.members

@@ -64,6 +64,13 @@ class ElectionManager:
                     return False
         return True
 
+    async def advance_stage(self):
+        return
+
+    async def stage_check(self):
+        if self.next_stage >= datetime.now():
+            self.advance_stage()
+
     async def register_candidate(self, player):
         if not await self.is_eligible_candidate(player):
             return False
@@ -94,7 +101,13 @@ class Office:
 
         office = await db.Elections.get_office(office_id)
 
-        self.election_manager = ElectionManager(self, office["regular_elections"])
+        if "regular_elections" in office:
+            if office["regular_elections"]["type"] == "simple":
+                self.election_manager = ElectionManager(self, office["regular_elections"])
+            elif office["regular_elections"]["type"] == "ranked_choice":
+                self.election_manager = RankedChoice(self, office["regular_elections"])
+            else:
+                raise Exception("Unknown election style: " + office["regular_elections"]["type"])
 
         if not office:
             raise ValueError("Office not found")

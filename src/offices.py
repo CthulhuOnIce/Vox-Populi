@@ -4,23 +4,68 @@ C = None
 
 Offices = []
 
+class ElectionManager:
+    enabled           = False
+    current_stage     = None
+
+    election_style    = None
+    last_election     = None
+    next_stage        = None
+    term_length       = 0
+
+    office            = None
+
+    nomination_stage  = 0
+    campaigning_stage = 0
+    voting_stage      = 0
+    lame_duck_stage   = 0
+
+    voters = []
+
+    # candidates = {}
+    # votes = {}
+
+    def __init__(self, office, reg_elections:dict):
+        self.office = office
+        if reg_elections:
+            self.enabled            = True
+            self.election_style     = reg_elections["type"]
+            self.last_election      = reg_elections["last_election"]
+            self.next_stage         = reg_elections["next_stage"]
+            self.term_length        = reg_elections["term_length"]
+
+            self.nomination_stage   = reg_elections["stages"]["nomination"]
+            self.campaigning_stage  = reg_elections["stages"]["campaigning"]
+            self.voting_stage       = reg_elections["stages"]["voting"]
+            self.lame_duck_stage    = reg_elections["stages"]["lame_duck"]
+
 class Office:
     name = None
     role = None
     guild = None
     members = []
+    flags = []
     generataion = 0
+    seats = 0
 
     min_messages = 0
     min_age_days = 0
     total_term_limit = 0
     successive_term_limit = 0
 
+    # regualar election handline
+    election_manager:ElectionManager = None
+
     async def __init__(self, bot, config, office_id):
         self.name = office_id
+
         office = await db.Elections.get_office(office_id)
+
+        self.election_manager = ElectionManager(self, office["regular_elections"])
+
         if not office:
             raise ValueError("Office not found")
+
         self.guild = bot.get_guild(config["guild_id"])
         self.role = self.guild.get_role(office["role_id"])
         self.generataion = office["generations"]

@@ -448,6 +448,10 @@ class Elections_:
         db = await create_connection("Officers")
         found = await db.find_all({"office_id": office_id, "last_term_end": None}).to_list(None)
         return found
+    
+    async def get_officer(officer_id:int):
+        db = await create_connection("Officers")
+        return await db.find_one({"_id": officer_id})
 
     async def set_office_requirements(self, office:dict, requirements:dict):
         for requirement in requirements:
@@ -675,6 +679,10 @@ player_example = {
  
 
 class Archives_:
+
+    async def get_player(self, player_id:int):
+        db = await create_connection("Archives")
+        return await db.find_one({"_id": player_id})
 
     async def link_github(self, user_id, api_response):
         name = api_response["login"]

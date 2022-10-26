@@ -1,9 +1,12 @@
+from datetime import datetime
+
 from . import database as db
 
 C = None
 
 Offices = []
 
+# used for simple elections, use as a prototype for more advanced election styles
 class ElectionManager:
     enabled           = False
     current_stage     = None
@@ -22,6 +25,8 @@ class ElectionManager:
 
     voters = []
 
+    # appointers = []
+
     # candidates = {}
     # votes = {}
 
@@ -38,6 +43,34 @@ class ElectionManager:
             self.campaigning_stage  = reg_elections["stages"]["campaigning"]
             self.voting_stage       = reg_elections["stages"]["voting"]
             self.lame_duck_stage    = reg_elections["stages"]["lame_duck"]
+    
+    async def is_eligible_candidate(self, member):
+        player = await db.Archives.get_player(member.id)
+        officer = await db.Elections.get_officer(member.id)
+        if self.office.min_messages:
+            if player.messages < self.office.min_messages:
+                return False
+        if self.office.min_age_days:
+            joined = player["joined"]
+            if joined:
+                if (datetime.now() - joined).days < self.office.min_age_days:
+                    return False
+        if officer:
+            if self.office.total_term_limit:
+                if officer["terms_served_total"] >= self.office.total_term_limit:
+                    return False
+            if self.office.successive_term_limit:
+                if officer["terms_served_successively"] >= self.office.successive_term_limit:
+                    return False
+        return True
+
+    async def register_candidate(self, player):
+        if not await self.is_eligible_candidate(player):
+            return False
+
+class RankedChoice(ElectionManager):
+    def __init__(self, office, reg_elections:dict):
+        super().__init__(office, reg_elections)
 
 class Office:
     name         = None

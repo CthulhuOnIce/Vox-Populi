@@ -385,12 +385,7 @@ class Elections_:
             }
         }
         await db.insert_one(insert)
-
-    async def player_has_flag(self, user_id, flag):
-        db = await create_connection("Officers")
-        db.find_one({"_id": user_id, "flags": flag})
-        return await db.find_one({"_id": user_id, "flags": flag}) is not None
-
+    
     async def remove_offices(self):
         db = await create_connection("Offices")
         await db.drop()
@@ -722,7 +717,7 @@ class Archives_:
             "$set": {"last_seen": datetime.datetime.now() if increment_messages else fetched["last_seen"]},
             "$unset": {"left": 1}
         })
-        
+
         return fetched["messages"] + 1 if increment_messages else fetched["messages"]
 
 

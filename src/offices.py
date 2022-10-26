@@ -64,6 +64,13 @@ class ElectionManager:
                     return False
         return True
 
+    async def get_winners(self):
+        return
+    
+    async def appoint_winners(self):
+        winners = await self.get_winners()
+        return
+
     async def advance_stage(self):
         return
 
@@ -126,13 +133,6 @@ class Office:
             self.members.append(user)
 
         Offices.append(self)
-
-    async def get_winners(self):
-        return
-    
-    async def appoint_winners(self):
-        winners = await self.get_winners()
-        return
     
     async def database(self):
         return await db.get_office(self.name)

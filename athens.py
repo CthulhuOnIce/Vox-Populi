@@ -10,7 +10,7 @@ import discord
 import yaml
 from discord.ext import commands
 
-from src import debug, electionmanager, legislation, recordkeeping, source, timestamps
+from src import debug, electionmanager, legislation, recordkeeping, source, timestamps, offices
 
 # from disputils import BotEmbedPaginator, BotConfirmation, BotMultipleChoice
 
@@ -35,6 +35,9 @@ debug.setup(bot, C)
 electionmanager.setup(bot, C)
 legislation.setup(bot, C)
 source.setup(bot, C)
+
+# setup various subsystems
+offices.populate(bot, C)
 
 
 @bot.event

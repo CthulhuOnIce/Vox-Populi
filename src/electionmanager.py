@@ -8,6 +8,7 @@ from discord.ext import commands, tasks
 from . import database as db
 from . import quickinputs as qi
 from . import timestamps as ts
+from . import offices
 from .news import broadcast
 
 C = {}

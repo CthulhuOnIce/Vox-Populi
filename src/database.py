@@ -716,13 +716,13 @@ class Archives_:
             update["nickname"] = {"name": player.nick, "date": datetime.datetime.now()}
             nickname = player.nick
 
-        if update != {}:
-            await db.update_one({"_id": player.id}, {
-                "$push": update, 
-                "$inc": {"messages": 1 if increment_messages else 0}, 
-                "$set": {"last_seen": datetime.datetime.now() if increment_messages else fetched["last_seen"]},
-                "$unset": {"left": 1}
-            })
+        await db.update_one({"_id": player.id}, {
+            "$push": update, 
+            "$inc": {"messages": 1 if increment_messages else 0}, 
+            "$set": {"last_seen": datetime.datetime.now() if increment_messages else fetched["last_seen"]},
+            "$unset": {"left": 1}
+        })
+        
         return fetched["messages"] + 1 if increment_messages else fetched["messages"]
 
 

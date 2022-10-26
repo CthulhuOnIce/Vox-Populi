@@ -140,7 +140,8 @@ class RecordKeeping(commands.Cog):
         embed.add_field(name="Name", value=player.display_name, inline=False)
         embed.add_field(name="ID", value=player.id, inline=False)
         embed.add_field(name="Created", value=ts.simple_day(player.created_at), inline=False)
-        embed.set_thumbnail(url=player.avatar)
+        if player.avatar:
+            embed.set_thumbnail(url=player.avatar)
         player_info = await db.StatTracking.find_player(player.id)
         if player_info:
             embed.add_field(name="Message Count", value=player_info["messages"], inline=False)
@@ -222,6 +223,7 @@ class RecordKeeping(commands.Cog):
             return
         # TODO: add to daily message count
         messages = await db.Archives.update_player(message.author, True)
+        print(f"messages should have incremented {messages}")
         player = await db.StatTracking.find_player(message.author.id)
         if not player["can_vote"]:
             const = await db.Constitution.get_constitution()

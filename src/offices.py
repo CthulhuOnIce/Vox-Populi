@@ -40,17 +40,17 @@ class ElectionManager:
             self.lame_duck_stage    = reg_elections["stages"]["lame_duck"]
 
 class Office:
-    name = None
-    role = None
-    guild = None
-    members = []
-    flags = []
-    generataion = 0
-    seats = 0
+    name         = None
+    role         = None
+    guild        = None
+    members      = []
+    flags        = []
+    generataion  = 0
+    seats        = 0
 
-    min_messages = 0
-    min_age_days = 0
-    total_term_limit = 0
+    min_messages          = 0
+    min_age_days          = 0
+    total_term_limit      = 0
     successive_term_limit = 0
 
     # regualar election handline

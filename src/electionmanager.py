@@ -108,7 +108,7 @@ class Elections(commands.Cog):
         if not "regular_elections" in election:
             await ctx.respond("This office does not have regular elections.", ephemeral=True)
             return
-        player_info = await db.StatTracking.find_player(ctx.author.id)
+        player_info = await db.Players.find_player(ctx.author.id)
         if not player_info["can_vote"]:
             await ctx.respond("You are not allowed to vote.")
             return

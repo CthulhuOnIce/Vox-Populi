@@ -93,7 +93,7 @@ class Constitution_:
 
 Constitution = Constitution_()
 
-class StatTracking_:
+class Players_:
 
     async def find_player(self, player_id):
         player_id = int(player_id)
@@ -105,6 +105,10 @@ class StatTracking_:
         found = await self.find_player(player_id)
         if found is not None:
             await db.update_one({"_id": player_id}, {"$set": {"left": datetime.datetime.now()}})
+
+Players = Players_()
+
+class StatTracking_:
     
     async def increment_daily_messages(self):
         db = await create_connection("Global")

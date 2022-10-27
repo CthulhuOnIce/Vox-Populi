@@ -142,7 +142,7 @@ class RecordKeeping(commands.Cog):
         embed.add_field(name="Created", value=ts.simple_day(player.created_at), inline=False)
         if player.avatar:
             embed.set_thumbnail(url=player.avatar)
-        player_info = await db.StatTracking.find_player(player.id)
+        player_info = await db.Players.find_player(player.id)
         if player_info:
             embed.add_field(name="Message Count", value=player_info["messages"], inline=False)
             embed.add_field(name="Last Seen", value=ts.simple_day(player_info["last_message"]), inline=False)
@@ -223,7 +223,7 @@ class RecordKeeping(commands.Cog):
             return
         # TODO: add to daily message count
         messages = await db.Archives.update_player(message.author, True)
-        player = await db.StatTracking.find_player(message.author.id)
+        player = await db.Players.find_player(message.author.id)
         if not player["can_vote"]:
             const = await db.Constitution.get_constitution()
             if messages >= const["VoterMinMessages"] and message.author.created_at <= datetime.datetime.utcnow().replace(tzinfo=pytz.UTC) - datetime.timedelta(days=const["VoterAccountAge"]):

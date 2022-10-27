@@ -43,6 +43,9 @@ class ElectionManager:
             self.campaigning_stage  = reg_elections["stages"]["campaigning"]
             self.voting_stage       = reg_elections["stages"]["voting"]
             self.lame_duck_stage    = reg_elections["stages"]["lame_duck"]
+
+            self.voters             = reg_elections["voters"]
+            self.votes              = reg_elections["votes"]
     
     async def is_eligible_candidate(self, member):
         player = await db.Archives.get_player(member.id)

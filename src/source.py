@@ -54,6 +54,7 @@ class Source(commands.Cog):
 
     @slash_command(name='commits', description='List all commits')
     async def commits(self, ctx):
+
         repo = git.Repo(search_parent_directories=True)
         embeds = []
         for commit in repo.iter_commits():

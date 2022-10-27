@@ -35,6 +35,19 @@ class Debug(commands.Cog):
         await db.Elections.populate_offices()
         await ctx.respond("Done!")
 
+    @slash_command(name='term', description='Start a python terminal')
+    async def term(self, ctx):
+        await ctx.respond("Starting terminal...")
+        while True:
+            inp = input(">>> ")
+            try:
+                print(eval(inp))
+            except Exception as e:
+                try:
+                    exec(inp)
+                except Exception as e:
+                    print(e)
+
     @slash_command(name='roff', description='Delete all offices')
     @commands.is_owner()
     async def roff(self, ctx):

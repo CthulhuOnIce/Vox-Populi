@@ -6,6 +6,7 @@ import discord
 from . import database as db
 from . import quickinputs as qi
 from . import timestamps as ts
+from .news import broadcast
 
 C = None
 
@@ -71,11 +72,20 @@ class ElectionManager:
 
             self.votes              = reg_elections["votes"]
 
-    async def make_candidate(self, member, make_check = False):
-        if make_check:
-            if not await self.is_eligible_candidate(member):
-                return False
-        return await db.Elections.make_candidate(member.id, self.office.name)
+    async def register_candidate(self, ctx):
+        if not self.stage == "nomination":
+            await ctx.respond("The nominations for this election have already closed.", ephemeral=True)
+            return
+        if not await self.office.is_eligible_candidate(ctx.author):
+            await ctx.respond("You are not eligible for this office.", ephemeral=True)
+            return
+        if ctx.author in self.candidates:
+            await ctx.respond("You have already registered for this election, use /drop to withdraw.", ephemeral=True)
+            return
+        self.candidates[ctx.author] = []
+        await db.Elections.make_candidate(ctx.author.id, self.office.name)
+        await ctx.respond("You have been registered as a candidate.", ephemeral=True)
+        broadcast(self.bot, "nomination", 2, f"{ctx.author.mention} has registered as a candidate for {office}!")
 
     async def drop_candidate(self, member):
         return await db.Elections.drop_candidate(member.id, self.office.name)
@@ -88,11 +98,66 @@ class ElectionManager:
         return winners
 
     async def advance_stage(self):
-        return
+        term_end = self.last_election + datetime.timedelta(days=self.term_length)
 
-    async def stage_check(self):
+        nomination_day = term_end - datetime.timedelta(days=(self.nomination_stage + self.campaigning_stage + self.voting_stage + self.lame_duck_stage))  # official start of election period
+
+        if self.next_stage == None:  # election is not running whatsoever
+            if datetime.datetime.now() > nomination_day:  # starts election with nomination
+                self.bot.dispatch(event_name="election_start", office=self.office.name)
+                broadcast(self.bot, "election", 5, f"Election for {self.office.name} is opening soon! You can now nominate yourself for the position, if eligible.")
+                next_stage = datetime.datetime.now() + datetime.timedelta(days=self.nomination_stage)
+                await db.Elections.set_election_stage(self.office.name, next_stage, "nomination")  # sets the current stage to nomination, expires in x days, end
+                return
+        else:
+            if datetime.datetime.now() > self.next_stage:  # if the current stage has expired
+                if self.stage == "nomination":  # nomination -> campaigning
+                    # TODO: check if there are enough candidates, if not, extend the nomination period or concede the election by default
+                    await db.Elections.increment_terms_missed(self.office.name)
+                    broadcast(self.bot, "election", 5, f"Nomination for {self.office.name} has ended! You can now campaign for the position, if you were nominated.")
+                    self.next_stage = datetime.datetime.now() + datetime.timedelta(days=self.campaigning_stage)
+                    self.stage = "campaigning"
+
+                if self.stage == "campaigning": # campaigning -> voting
+                    broadcast(self.bot, "election", 5, f"The voting period for {self.office.name} has started! You have {self.voting_stage} days to vote!")
+                    self.next_stage = datetime.datetime.now() + datetime.timedelta(days=self.voting_stage)
+                    self.stage = "voting"
+
+                if self.stage == "voting":  # voting -> lame duck
+                    winners = await self.get_winners()
+                    broadcast(self.bot, "election", 5, f"The voting period for {self.office.name} has ended! The winners are {', '.join([winner.mention for winner in winners])}!\nThey will take office in {self.lame_duck_stage} days.")
+                    self.next_stage = datetime.datetime.now() + datetime.timedelta(days=self.lame_duck_stage)
+                    self.stage = "lame_duck"
+
+                if self.stage == "lame_duck":  # lame duck -> election end
+                    broadcast(self.bot, "election", 5, f"The term for {self.office.name} has ended! The next election will start in {self.term_length} days.")
+                    winners = await db.Elections.get_election_winners(self.office.name)
+                    await db.Elections.set_new_officers(winners, self.office.name)
+                    role = self.office.role
+                    # demote everyone who lost
+                    for member in role.members:
+                        if not member.id in winners:
+                            await member.remove_roles(role)
+                    # promote everyone who won
+                    for winner in winners:
+                        winner = int(winner)
+                        member = C["guild"].get_member(winner)
+                        await member.add_roles(role)
+
+                    broadcast(self.bot, "election", 5, f"The new term for {self.office.name} has started! Congratulations to the new officers!")
+
+                    self.next_stage = None
+                    self.stage = None
+
+                    await db.Elections.set_last_election(self.office.name, datetime.datetime.now())
+                    await db.Elections.reset_votes(self.office.name)
+                    await db.Elections.apply_restriction_queue(self.office.name)
+                
+                await db.Elections.set_election_stage(self.office.name, self.next_stage, self.stage)
+
+    async def tick(self):
         if self.next_stage >= datetime.now():
-            self.advance_stage()
+            await self.advance_stage()
 
     async def register_candidate(self, player):
         if not await self.is_eligible_candidate(player):

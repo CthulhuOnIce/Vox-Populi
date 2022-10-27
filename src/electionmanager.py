@@ -12,15 +12,7 @@ from . import offices
 from .news import broadcast
 
 C = {}
-def th(num:int):  # returns the ordinal of a number
-    if num == 1:
-        return f"{num}st"
-    elif num == 2:
-        return f"{num}nd"
-    elif num == 3:
-        return f"{num}rd"
-    else:
-        return f"{num}th"
+
 
 class Elections(commands.Cog):
     def __init__(self, bot):
@@ -38,86 +30,37 @@ class Elections(commands.Cog):
         
     @slash_command(name='elections', description='Show upcoming elections.')
     async def show_elections(self, ctx):
-        offices = await db.Elections.get_all_offices()
         embeds = []
-        for office in offices:
-            if not "regular_elections" in office:
+        for office in offices.Offices:
+            if not office.election_manager:
                 continue
-            name = office["_id"]
-            re = office["regular_elections"]
-            embed = discord.Embed(title="Elections", description=name, color=0x00ff00)
-            term_start = re["last_election"]
-            term_end = term_start + datetime.timedelta(days=re["term_length"])
-            election_season_length = re["stages"]["nomination"] + re["stages"]["campaigning"] + re["stages"]["voting"] + re["stages"]["lame_duck"]
-            next_election_season_start = term_end - datetime.timedelta(days=election_season_length)
-            term_end - datetime.timedelta(days=election_season_length)
-            field_value = f"**Election Type:** {re['type']}\n**Term Start:** `{ts.simple_day(term_start)}`"
-            field_value += f"\n**Key Dates:**\n"
-            field_value += f" - **Nomination:**\n - - `{ts.simple_day(next_election_season_start)}`\n - - `{ts.simple_day(next_election_season_start + datetime.timedelta(days=re['stages']['nomination']))}`\n"
-            field_value += f" - **Campaigning:**\n - - `{ts.simple_day(next_election_season_start + datetime.timedelta(days=re['stages']['nomination']))}` \n - - `{ts.simple_day(next_election_season_start + datetime.timedelta(days=re['stages']['nomination'] + re['stages']['campaigning']))}`\n"
-            field_value += f" - **Voting:**\n - - `{ts.simple_day(next_election_season_start + datetime.timedelta(days=re['stages']['nomination'] + re['stages']['campaigning']))}`\n - - `{ts.simple_day(next_election_season_start + datetime.timedelta(days=re['stages']['nomination'] + re['stages']['campaigning'] + re['stages']['voting']))}`\n"
-            if re["stages"]["lame_duck"] > 0:
-                field_value += f" - **Lame Duck:**\n - - `{ts.simple_day(next_election_season_start + datetime.timedelta(days=re['stages']['nomination'] + re['stages']['campaigning'] + re['stages']['voting']))}`\n - - `{ts.simple_day(next_election_season_start + datetime.timedelta(days=election_season_length))}`"
-            field_value += f"\n**Term End:** `{ts.simple_day(term_end)}`\n**Term Length:** `{re['term_length']} days`\n**Seats:** `{re['seats']}`"
-            if re["next_stage"]:
-                field_value += f"\n**Next Stage:** `{ts.simple_day(re['next_stage'])}`\nCurrent Stage: {re['stage']}"
-            embed.add_field(name=office["_id"], value=field_value)
+            embed = await office.election_manager.generate_embed()
             embeds.append(embed)
         await qi.PaginateEmbeds(ctx, embeds)
 
-    async def simple_vote(self, ctx, office:str):
-        # check if user has already voted
-        election = await db.Elections.get_office(office)
-        re = election["regular_elections"]
-        
-        if ctx.author.id in re["voters"]:
-            await ctx.respond("You have already voted in this election.")
-            return
-        await db.Elections.add_voter(ctx.author.id, election["_id"])
-
-        candidates = re["candidates"]
-        candidates_dict = {str(C["guild"].get_member(candidate)): str(candidate) for candidate in candidates}
-        candidates_str = list(candidates_dict.keys())
-        limit = re["seats"]
-
-        choices = await qi.quickBMC(ctx, f"Select your preferred candidates. Max: {re['seats']}", candidates_dict, max_answers=re["seats"])
-        choices = [int(choice) for choice in choices]
-
-        msg_choices = [f"{th(i+1)} choice: {C['guild'].get_member(choice)}" for i, choice in enumerate(choices)]
-        msg = "```"
-        msg += "\n".join(msg_choices)
-        msg += "```\n"
-        msg += "Are you sure you want to vote for these candidates?"
-
-        accept = await qi.quickConfirm(ctx, msg)
-        if accept:
-            for choice in choices:
-                await db.Elections.cast_vote_simple(ctx.author.id, election["_id"], choice)
-            await ctx.respond("Your vote has been cast.", ephemeral=True)
-        else:
-            await db.Elections.remove_voter(ctx.author.id, election["_id"])
-            await ctx.respond("Vote cancelled.", ephemeral=True)
-
     @slash_command(name='vote', description='Vote in an election')
     async def vote(self, ctx, office:str):
-        # check if election is open
-        election = await db.Elections.get_office(office)
-        if not election:
-            await ctx.respond("No office found with that name.")
+        office = offices.get_office(office)
+        if not office:
+            await ctx.respond("Invalid office.")
             return
-        if not "regular_elections" in election:
-            await ctx.respond("This office does not have regular elections.", ephemeral=True)
+        if not office.election_manager:
+            await ctx.respond("This office does not have an election manager.")
             return
         player_info = await db.Players.find_player(ctx.author.id)
         if not player_info["can_vote"]:
             await ctx.respond("You are not allowed to vote.")
             return
-        re = election["regular_elections"]
-        if re["stage"] != "voting":
-            await ctx.respond("Voting is not open for this office.", ephemeral=True)
+        await office.election_manager.capture_vote(ctx)
+    
+    @slash_command(name='check_eligibility', description='Get information about a User or Player.')
+    async def check_eligibility(self, ctx, office:str):
+        office = offices.get_office(office)
+        if not office:
+            await ctx.respond("Office not found.")
             return
-        if re["type"] == "simple":
-            await self.simple_vote(ctx, office)
+        answer = await office.is_eligible_candidate(ctx.author)
+        await ctx.respond(answer)
 
     @slash_command(name='reg', description='Register as a candidate for an office.')
     @option('office', str, description='The office you want to register for.')

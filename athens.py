@@ -36,9 +36,11 @@ electionmanager.setup(bot, C)
 legislation.setup(bot, C)
 source.setup(bot, C)
 
-# setup various subsystems
-offices.populate(bot, C)
 
+@bot.event
+async def on_connect():
+    # start subsystems
+    await offices.populate(bot, C)
 
 @bot.event
 async def on_ready():  # I just like seeing basic info like this

@@ -354,6 +354,7 @@ class Elections_:
             "roleid": C["officer-role"],
             "flags": ["can_submit_motions", "can_vote_motions"],
             "generations": 0,
+            "seats": 1,
             "restrictions_queue": {  # gets copied into restrictions at the end of the next election
                 "min_messages": 0,
                 "min_age_days": 0,
@@ -377,7 +378,6 @@ class Elections_:
                     "voting": 2,
                     "lame_duck": 7 # time after voting ends before the new term starts
                 },
-                "seats": 1,
                 "stage": "none",
                 "candidates": [],
                 # simple: {candidate_id: [voter_id, voter_id, ...], ...}
@@ -448,12 +448,12 @@ class Elections_:
         office["restrictions"][requirement] = value
         await db.update_one({"_id": office_id}, {"$set": {"restrictions": office["restrictions"]}})
 
-    async def get_officers(office_id:str):
+    async def get_officers(self, office_id:str):
         db = await create_connection("Officers")
-        found = await db.find_all({"office_id": office_id, "last_term_end": None}).to_list(None)
+        found = await db.find({"office_id": office_id, "last_term_end": None}).to_list(None)
         return found
     
-    async def get_officer(officer_id:int):
+    async def get_officer(self, officer_id:int):
         db = await create_connection("Officers")
         return await db.find_one({"_id": officer_id})
 

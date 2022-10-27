@@ -113,13 +113,6 @@ class RecordKeeping(commands.Cog):
             embed.add_field(name=rule, value=const[rule])
         await ctx.respond(embed=embed, ephemeral=True)
 
-    @slash_command(name='check_eligibility', description='Get information about a User or Player.')
-    async def check_eligibility(self, ctx, office:str):
-        if not await db.Elections.get_office(office):
-            await ctx.respond("Office not found.")
-            return
-        await ctx.respond(await db.Elections.is_eligible_for_office(ctx.author.id, office))
-
     @slash_command(name='player_info', description='Get information about a User or Player.')
     @option('player_id', str, description='Target\'s User ID')
     async def player_info(self, ctx, player_id:str):

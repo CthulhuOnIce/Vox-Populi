@@ -10,6 +10,7 @@ from discord.ext import commands, tasks
 from . import database as db
 from . import motionenforcement as MM
 from . import quickinputs as qi
+from . import offices
 
 C = {}
 
@@ -58,6 +59,8 @@ class Debug(commands.Cog):
     async def repopo(self, ctx):
         await db.Elections.remove_offices()
         await db.Elections.populate_offices()
+        offices.Offices = []
+        await offices.populate(self.bot, C)
         await ctx.respond("Done!")
 
     @slash_command(name='tmc', description='Test qi.quickBMC')

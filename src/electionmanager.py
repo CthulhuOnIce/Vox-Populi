@@ -69,35 +69,26 @@ class Elections(commands.Cog):
         if not office:
             await ctx.respond("Office not found.")
             return  
-        if not office.regular_elections:
+        if not office.election_manager:
             await ctx.respond("This office does not have regular elections.", ephemeral=True)
             return
 
-        regular_elections = office.regular_elections
-        await regular_elections.register_candidate(ctx)
+        election_manager = office.election_manager
+        await election_manager.register_candidate(ctx)
 
     @slash_command(name='drop', description='Drop out of an election, this can be used at any time.')
     @option('office', str, description='The office you want to drop out of running for.')
     async def drop(self, ctx, office):
-        election = await db.Elections.get_office(office)
-        if not election:
-            await ctx.respond("No office found with that name.")
-            return
-        if not "regular_elections" in election:
+        office = offices.get_office(office)
+        if not office:
+            await ctx.respond("Office not found.")
+            return  
+        if not office.election_manager:
             await ctx.respond("This office does not have regular elections.", ephemeral=True)
             return
-        re = election["regular_elections"]
-        if ctx.author.id not in re["candidates"]:
-            await ctx.respond("You are not a candidate for this office.", ephemeral=True)
-            return
-        if re["stage"] == "voting":
-            await ctx.respond("You cannot drop out of an election after voting has started.", ephemeral=True)
-            return
-        if re["stage"] == "campaigning":
-            broadcast(self.bot, "nomination", 2, f"{ctx.author.mention} has dropped out of the running for {office}!")
-            return
-        await db.Elections.drop_candidate(ctx.author.id, election["_id"])
-        await ctx.respond("You have dropped out of the running for this office.", ephemeral=True)
+        
+        election_manager = office.election_manager
+        await election_manager.drop_candidate(ctx)
 
     @tasks.loop(hours=1)
     async def election_loop(self):
@@ -111,18 +102,11 @@ class Elections(commands.Cog):
     @option('force_next', bool, description='Force the election to advance to the next stage, even if it is not time yet.')
     @commands.is_owner()
     async def debugadvanceelection(self, ctx, force_next:bool):
-        await ctx.interaction.response.defer()
         await ctx.respond("Election loop triggered.", ephemeral=True)
-        if force_next:
-            for office in await db.Elections.get_all_offices():
-                if not "regular_elections" in office:
-                    continue
-                if office["regular_elections"]["next_stage"] == None:
-                    await db.Elections.set_last_election(office["_id"], datetime.datetime.now() - datetime.timedelta(days=office["regular_elections"]["term_length"]*3))
-                else:
-                    yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
-                    await db.Elections.set_election_stage(office["_id"], yesterday, office["regular_elections"]["stage"])
-        await self.election_loop()
+        for office in offices.Offices:
+            if not office.election_manager:
+                continue
+            await office.election_manager.tick(force_next)
         
 
 def setup(bot, config):

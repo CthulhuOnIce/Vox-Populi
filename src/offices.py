@@ -51,6 +51,7 @@ class ElectionManager:
     def __init__(self, office, reg_elections:dict):
         self.office = office
         self.guild = office.guild
+        self.bot = office.bot
         if reg_elections:
             self.enabled            = True
 
@@ -68,9 +69,8 @@ class ElectionManager:
 
             self.voters             = [ self.guild.get_member(voter) for voter in reg_elections["voters"] ]
             for candidate in reg_elections["candidates"]:
-                self.candidates[self.guild.get_member(candidate)] = reg_elections["candidates"][candidate]
-
-            self.votes              = reg_elections["votes"]
+                recan = reg_elections["candidates"][candidate]
+                self.candidates[self.guild.get_member(int(candidate))] = recan
 
     async def register_candidate(self, ctx):
         if not self.stage == "nomination":
@@ -83,85 +83,108 @@ class ElectionManager:
             await ctx.respond("You have already registered for this election, use /drop to withdraw.", ephemeral=True)
             return
         self.candidates[ctx.author] = []
-        await db.Elections.make_candidate(ctx.author.id, self.office.name)
+
+        db = await create_connection("Offices")
+        office = await self.office.database()
+
+        office["candidates"][str(ctx.author.id)] = []
+        
+        await db.update_one({"_id": self.office.name}, {"$set": {"candidates": office["candidates"]}})
+
         await ctx.respond("You have been registered as a candidate.", ephemeral=True)
-        broadcast(self.bot, "nomination", 2, f"{ctx.author.mention} has registered as a candidate for {office}!")
+        broadcast(self.bot, "nomination", 2, f"{ctx.author.mention} has registered as a candidate for {self.office.name}!")
+
+    async def drop_candidate(self, ctx):
+        if not ctx.author in self.candidates:
+            await ctx.respond("You are not a candidate in this election.", ephemeral=True)
+            return
+
+        self.candidates.pop(ctx.author)
+
+        db = await create_connection("Offices")
+        office = await self.office.database()
+        
+        office["candidates"].pop(str(ctx.author.id))
+
+        await db.update_one({"_id": self.office.name}, {"$set": {"candidates": office["candidates"]}})
+
+        await db.Elections.drop_candidate(ctx.author.id, self.office.name)
+        await ctx.respond("You have been removed from the election.", ephemeral=True)
 
     async def drop_candidate(self, member):
         return await db.Elections.drop_candidate(member.id, self.office.name)
 
     async def get_winners(self):
-        return await db.Elections.get_election_winners(self.office.name)
+        winners = await db.Elections.get_election_winners(self.office.name)
+        winners = [self.bot.get_user(winner) for winner in winners]
     
     async def appoint_winners(self):
         winners = await self.get_winners()
+        role = self.office.role()
+
+        # demote everyone who lost
+        for member in role.members:
+            if not member.id in winners:
+                await member.remove_roles(role)
         return winners
 
     async def advance_stage(self):
-        term_end = self.last_election + datetime.timedelta(days=self.term_length)
+        term_end = self.last_election + timedelta(days=self.term_length)
 
-        nomination_day = term_end - datetime.timedelta(days=(self.nomination_stage + self.campaigning_stage + self.voting_stage + self.lame_duck_stage))  # official start of election period
+        nomination_day = term_end - timedelta(days=(self.nomination_stage + self.campaigning_stage + self.voting_stage + self.lame_duck_stage))  # official start of election period
 
         if self.next_stage == None:  # election is not running whatsoever
-            if datetime.datetime.now() > nomination_day:  # starts election with nomination
+            if datetime.now() > nomination_day:  # starts election with nomination
                 self.bot.dispatch(event_name="election_start", office=self.office.name)
                 broadcast(self.bot, "election", 5, f"Election for {self.office.name} is opening soon! You can now nominate yourself for the position, if eligible.")
-                next_stage = datetime.datetime.now() + datetime.timedelta(days=self.nomination_stage)
+                next_stage = datetime.now() + timedelta(days=self.nomination_stage)
                 await db.Elections.set_election_stage(self.office.name, next_stage, "nomination")  # sets the current stage to nomination, expires in x days, end
                 return
         else:
-            if datetime.datetime.now() > self.next_stage:  # if the current stage has expired
+            if datetime.now() > self.next_stage:  # if the current stage has expired
                 if self.stage == "nomination":  # nomination -> campaigning
                     # TODO: check if there are enough candidates, if not, extend the nomination period or concede the election by default
                     await db.Elections.increment_terms_missed(self.office.name)
                     broadcast(self.bot, "election", 5, f"Nomination for {self.office.name} has ended! You can now campaign for the position, if you were nominated.")
-                    self.next_stage = datetime.datetime.now() + datetime.timedelta(days=self.campaigning_stage)
+                    self.next_stage = datetime.now() + timedelta(days=self.campaigning_stage)
                     self.stage = "campaigning"
 
                 if self.stage == "campaigning": # campaigning -> voting
                     broadcast(self.bot, "election", 5, f"The voting period for {self.office.name} has started! You have {self.voting_stage} days to vote!")
-                    self.next_stage = datetime.datetime.now() + datetime.timedelta(days=self.voting_stage)
+                    self.next_stage = datetime.now() + timedelta(days=self.voting_stage)
                     self.stage = "voting"
 
                 if self.stage == "voting":  # voting -> lame duck
                     winners = await self.get_winners()
                     broadcast(self.bot, "election", 5, f"The voting period for {self.office.name} has ended! The winners are {', '.join([winner.mention for winner in winners])}!\nThey will take office in {self.lame_duck_stage} days.")
-                    self.next_stage = datetime.datetime.now() + datetime.timedelta(days=self.lame_duck_stage)
+                    self.next_stage = datetime.now() + timedelta(days=self.lame_duck_stage)
                     self.stage = "lame_duck"
 
                 if self.stage == "lame_duck":  # lame duck -> election end
                     broadcast(self.bot, "election", 5, f"The term for {self.office.name} has ended! The next election will start in {self.term_length} days.")
-                    winners = await db.Elections.get_election_winners(self.office.name)
-                    await db.Elections.set_new_officers(winners, self.office.name)
-                    role = self.office.role
-                    # demote everyone who lost
-                    for member in role.members:
-                        if not member.id in winners:
-                            await member.remove_roles(role)
-                    # promote everyone who won
-                    for winner in winners:
-                        winner = int(winner)
-                        member = C["guild"].get_member(winner)
-                        await member.add_roles(role)
+                    
+                    await self.appoint_winners()
 
                     broadcast(self.bot, "election", 5, f"The new term for {self.office.name} has started! Congratulations to the new officers!")
 
                     self.next_stage = None
                     self.stage = None
 
-                    await db.Elections.set_last_election(self.office.name, datetime.datetime.now())
+                    now = datetime.now()
+
+                    await db.Elections.set_last_election(self.office.name, now)
+                    self.last_election = now
+
                     await db.Elections.reset_votes(self.office.name)
-                    await db.Elections.apply_restriction_queue(self.office.name)
+                    self.candidates = {}
+
+                    await self.office.apply_restrictions_queue()
+
                 
                 await db.Elections.set_election_stage(self.office.name, self.next_stage, self.stage)
 
-    async def tick(self):
-        if self.next_stage >= datetime.now():
-            await self.advance_stage()
-
-    async def register_candidate(self, player):
-        if not await self.is_eligible_candidate(player):
-            return False
+    async def tick(self, force_next = False):
+        await self.advance_stage()
 
     async def generate_embed(self):
         name = self.office.name
@@ -207,7 +230,7 @@ class ElectionManager:
         accept = await qi.quickConfirm(ctx, msg)
         if accept:
             for choice in choices:
-                self.votes[choice].append(ctx.author)
+                self.candidates[choice].append(ctx.author)
                 await db.Elections.cast_vote_simple(ctx.author.id, self.office.name, choice)
             await ctx.respond("Your vote has been cast.", ephemeral=True)
         else:
@@ -221,8 +244,9 @@ class RankedChoice(ElectionManager):
 
 class Office:
     name         = None
-    role         = None
+    role_id      = None
     guild        = None
+    bot          = None
     members      = []
     flags        = []
     generataion  = 0
@@ -239,6 +263,10 @@ class Office:
     async def New(self, bot, config, office):
         self.name = office["_id"]
         self.seats = office["seats"]
+        self.role_id = office["roleid"]
+        self.generataion = office["generations"]
+        self.bot = bot
+        self.guild = bot.get_guild(config['guild_id'])
 
         if "regular_elections" in office:
             if office["regular_elections"]["type"] == "simple":
@@ -255,9 +283,6 @@ class Office:
         if not office:
             raise ValueError("Office not found")
 
-        self.guild = bot.get_guild(config['guild_id'])
-        self.role = self.guild.get_role(office["roleid"])
-        self.generataion = office["generations"]
 
         for officer in await db.Elections.get_officers(office["_id"]):
             user = self.guild.get_member(officer["_id"])
@@ -265,6 +290,9 @@ class Office:
             self.members.append(user)
         
         Offices.append(self)
+
+    def role(self):
+        return self.guild.get_role(self.role_id)
     
     async def database(self):
         return await db.get_office(self.name)

@@ -379,12 +379,12 @@ class Elections_:
                     "lame_duck": 7 # time after voting ends before the new term starts
                 },
                 "stage": "none",
-                "candidates": [],
+
                 # simple: {candidate_id: [voter_id, voter_id, ...], ...}
                 # ranked {voter_id: [candidate_id, candidate_id, ...], ...}
                 # approval {voter_id: [candidate_id, candidate_id, ...], ...}
-                "votes": {},
-
+                "candidates": {},
+    
                 "voters": [], # list of voter ids
             }
         }
@@ -424,7 +424,7 @@ class Elections_:
 
     async def reset_votes(self, office_id):
         db = await create_connection("Offices")
-        await db.update_one({"_id": office_id}, {"$set": {"regular_elections.votes": {}, "regular_elections.candidates": [], "regular_elections.voters": []}})
+        await db.update_one({"_id": office_id}, {"$set": {"regular_elections.candidates": {}, "regular_elections.voters": []}})
 
     async def set_election_stage(self, office_id, next_stage, stage_id):
         db = await create_connection("Offices")
@@ -498,29 +498,6 @@ class Elections_:
     async def get_office(self, office_id):
         db = await create_connection("Offices")
         return await db.find_one({"_id": office_id})
-
-    async def make_candidate(self, player_id, office):
-        db = await create_connection("Offices")
-        # add player id to regular_elections["candidates"] in office
-        office = await db.find_one({"_id": office})
-        if player_id not in office["regular_elections"]["candidates"]:
-            office["regular_elections"]["candidates"].append(player_id)
-
-            if office["regular_elections"]["type"] == "simple":
-                office["regular_elections"]["votes"][str(player_id)] = []
-
-            await db.update_one({"_id": office["_id"]}, {"$set": {"regular_elections": office["regular_elections"]}})
-            return True
-        return False
-
-    async def drop_candidate(self, player_id, office):
-        db = await create_connection("Offices")
-        # remove player id from regular_elections["candidates"] in office
-        office = await db.find_one({"_id": office})
-        if player_id in office["regular_elections"]["candidates"]:
-            await db.update_one({"_id": office}, {"$pull": {"regular_elections.candidates": player_id}})
-            return True
-        return False
 
     async def cast_vote_simple(self, player_id, office_id, candidate_id): # returns False if already voted, casts vote if not already voted
         db = await create_connection("Offices")

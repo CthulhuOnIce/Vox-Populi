@@ -23,9 +23,9 @@ class ElectionManager:
     voting_stage      = 0
     lame_duck_stage   = 0
 
-    voters = []
+    voters            = []
 
-    # appointers = []
+    # appointers = []  # list of office IDs that can appoint candidates / officers
 
     # candidates = {}
     # votes = {}
@@ -64,8 +64,17 @@ class ElectionManager:
                     return False
         return True
 
+    async def make_candidate(self, member, make_check = False):
+        if make_check:
+            if not await self.is_eligible_candidate(member):
+                return False
+        return await db.Elections.make_candidate(member.id, self.office)
+
+    async def drop_candidate(self, member):
+        return await db.Elections.drop_candidate(member.id, self.office)
+
     async def get_winners(self):
-        return
+        return await db.Elections.get_election_winners(self.office)
     
     async def appoint_winners(self):
         winners = await self.get_winners()

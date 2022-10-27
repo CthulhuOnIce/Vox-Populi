@@ -84,12 +84,12 @@ class ElectionManager:
             return
         self.candidates[ctx.author] = []
 
-        db = await create_connection("Offices")
+        dbo = await db.create_connection("Offices")
         office = await self.office.database()
 
-        office["candidates"][str(ctx.author.id)] = []
+        office["regular_elections"]["candidates"][str(ctx.author.id)] = []
         
-        await db.update_one({"_id": self.office.name}, {"$set": {"candidates": office["candidates"]}})
+        await dbo.update_one({"_id": self.office.name}, {"$set": {"regular_elections.candidates": office["regular_elections"]["candidates"]}})
 
         await ctx.respond("You have been registered as a candidate.", ephemeral=True)
         broadcast(self.bot, "nomination", 2, f"{ctx.author.mention} has registered as a candidate for {self.office.name}!")
@@ -101,23 +101,20 @@ class ElectionManager:
 
         self.candidates.pop(ctx.author)
 
-        db = await create_connection("Offices")
+        dbo = await db.create_connection("Offices")
         office = await self.office.database()
+
+        office["regular_elections"]["candidates"].pop(str(ctx.author.id))
+
+        await dbo.update_one({"_id": self.office.name}, {"$set": {"regular_elections.candidates": office["regular_elections"]["candidates"]}})
         
-        office["candidates"].pop(str(ctx.author.id))
-
-        await db.update_one({"_id": self.office.name}, {"$set": {"candidates": office["candidates"]}})
-
-        await db.Elections.drop_candidate(ctx.author.id, self.office.name)
         await ctx.respond("You have been removed from the election.", ephemeral=True)
 
-    async def drop_candidate(self, member):
-        return await db.Elections.drop_candidate(member.id, self.office.name)
-
     async def get_winners(self):
-        winners = await db.Elections.get_election_winners(self.office.name)
-        winners = [self.bot.get_user(winner) for winner in winners]
-    
+        lst = sorted(self.candidates.keys(), key=lambda x: len(self.candidates[x]), reverse=True)[:self.office.seats]
+        print(lst)
+        return lst
+
     async def appoint_winners(self):
         winners = await self.get_winners()
         role = self.office.role()
@@ -126,6 +123,12 @@ class ElectionManager:
         for member in role.members:
             if not member.id in winners:
                 await member.remove_roles(role)
+        
+        # promote everyone who won
+        for winner in winners:
+            if role not in winner.roles:
+                await winner.add_roles(role)
+
         return winners
 
     async def advance_stage(self):
@@ -137,8 +140,9 @@ class ElectionManager:
             if datetime.now() > nomination_day:  # starts election with nomination
                 self.bot.dispatch(event_name="election_start", office=self.office.name)
                 broadcast(self.bot, "election", 5, f"Election for {self.office.name} is opening soon! You can now nominate yourself for the position, if eligible.")
-                next_stage = datetime.now() + timedelta(days=self.nomination_stage)
-                await db.Elections.set_election_stage(self.office.name, next_stage, "nomination")  # sets the current stage to nomination, expires in x days, end
+                self.next_stage = datetime.now() + timedelta(days=self.nomination_stage)
+                self.stage = "nomination"
+                await db.Elections.set_election_stage(self.office.name, self.next_stage, self.stage)  # sets the current stage to nomination, expires in x days, end
                 return
         else:
             if datetime.now() > self.next_stage:  # if the current stage has expired
@@ -149,18 +153,18 @@ class ElectionManager:
                     self.next_stage = datetime.now() + timedelta(days=self.campaigning_stage)
                     self.stage = "campaigning"
 
-                if self.stage == "campaigning": # campaigning -> voting
+                elif self.stage == "campaigning": # campaigning -> voting
                     broadcast(self.bot, "election", 5, f"The voting period for {self.office.name} has started! You have {self.voting_stage} days to vote!")
                     self.next_stage = datetime.now() + timedelta(days=self.voting_stage)
                     self.stage = "voting"
 
-                if self.stage == "voting":  # voting -> lame duck
+                elif self.stage == "voting":  # voting -> lame duck
                     winners = await self.get_winners()
                     broadcast(self.bot, "election", 5, f"The voting period for {self.office.name} has ended! The winners are {', '.join([winner.mention for winner in winners])}!\nThey will take office in {self.lame_duck_stage} days.")
                     self.next_stage = datetime.now() + timedelta(days=self.lame_duck_stage)
                     self.stage = "lame_duck"
 
-                if self.stage == "lame_duck":  # lame duck -> election end
+                elif self.stage == "lame_duck":  # lame duck -> election end
                     broadcast(self.bot, "election", 5, f"The term for {self.office.name} has ended! The next election will start in {self.term_length} days.")
                     
                     await self.appoint_winners()
@@ -179,11 +183,15 @@ class ElectionManager:
                     self.candidates = {}
 
                     await self.office.apply_restrictions_queue()
-
                 
                 await db.Elections.set_election_stage(self.office.name, self.next_stage, self.stage)
 
     async def tick(self, force_next = False):
+        if force_next:
+            if not self.next_stage:
+                self.last_election = datetime.now() - timedelta(days=self.term_length*2)
+            else:    
+                self.next_stage = datetime.now() - timedelta(days=1)
         await self.advance_stage()
 
     async def generate_embed(self):
@@ -216,10 +224,11 @@ class ElectionManager:
         self.voters.append(ctx.author)
         await db.Elections.add_voter(ctx.author.id, self.office.name)
 
-        candidates_dict = {str(candidate): candidate for candidate in self.candidates}
+        candidates_dict = {str(candidate): str(candidate.id) for candidate in self.candidates}
         limit = self.office.seats
 
         choices = await qi.quickBMC(ctx, f"Select your preferred candidates. Max: {limit}", candidates_dict, max_answers=limit)
+        choices = [ self.bot.get_user(int(choice)) for choice in choices ]
 
         msg_choices = [f"{th(i+1)} choice: {choice}" for i, choice in enumerate(choices)]
         msg = "```"
@@ -229,9 +238,10 @@ class ElectionManager:
 
         accept = await qi.quickConfirm(ctx, msg)
         if accept:
+            dbo = await db.create_connection("Offices")
             for choice in choices:
                 self.candidates[choice].append(ctx.author)
-                await db.Elections.cast_vote_simple(ctx.author.id, self.office.name, choice)
+                await dbo.update_one({"_id": self.office.name}, {"$addToSet": {f"regular_elections.candidates.{choice.id}": ctx.author.id}})
             await ctx.respond("Your vote has been cast.", ephemeral=True)
         else:
             self.voters.remove(ctx.author)
@@ -295,7 +305,7 @@ class Office:
         return self.guild.get_role(self.role_id)
     
     async def database(self):
-        return await db.get_office(self.name)
+        return await db.Elections.get_office(self.name)
 
     async def set_future_limit(self, requirements:dict):
         database = self.database()
@@ -322,12 +332,12 @@ class Office:
         return True
 
     async def apply_restrictions_queue(self):
-        database = self.database()
-        self.min_age_days = database["requirements_queue"]["min_age_days"]
-        self.min_messages = database["requirements_queue"]["min_messages"]
-        self.total_term_limit = database["requirements_queue"]["total_term_limit"]
-        self.successive_term_limit = database["requirements_queue"]["successive_term_limit"]
-        await db.Elections.set_office_requirements(database, database["requirements_queue"])
+        database = await self.database()
+        self.min_age_days = database["restrictions_queue"]["min_age_days"]
+        self.min_messages = database["restrictions_queue"]["min_messages"]
+        self.total_term_limit = database["restrictions_queue"]["total_term_limit"]
+        self.successive_term_limit = database["restrictions_queue"]["successive_term_limit"]
+        await db.Elections.set_office_requirements(database, database["restrictions_queue"])
     
     def is_officer(self, member):
         return member in self.members

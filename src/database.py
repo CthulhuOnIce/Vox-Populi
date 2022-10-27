@@ -398,30 +398,7 @@ class Elections_:
         db = await create_connection("Offices")
         office = await db.find_one({"_id": office_id})
         await db.update_one({"_id": office_id}, {"$set": {"restrictions": office["restrictions_queue"]}})
-
-    async def get_election_winners(self, office_id):
-        db = await create_connection("Offices")
-        office = await db.find_one({"_id": office_id})
-        if office["regular_elections"]["type"] == "simple":  # sort based on number of votes, then trim for top seats
-            lst = sorted(office["regular_elections"]["votes"].items(), key=lambda x: len(x[1]), reverse=True)[:office["regular_elections"]["seats"]]
-            lst = [x[0] for x in lst]
-            return lst
-        if office["regular_elections"]["type"] == "ranked":
-            winners = []
-            for voter in office["regular_elections"]["votes"]:
-                for candidate in office["regular_elections"]["votes"][voter]:
-                    if candidate not in winners:
-                        winners.append(candidate)
-                        break
-            return winners[:office["regular_elections"]["seats"]]
-        if office["regular_elections"]["type"] == "approval":
-            winners = []
-            for voter in office["regular_elections"]["votes"]:
-                for candidate in office["regular_elections"]["votes"][voter]:
-                    if candidate not in winners:
-                        winners.append(candidate)
-            return winners[:office["regular_elections"]["seats"]]
-
+    
     async def reset_votes(self, office_id):
         db = await create_connection("Offices")
         await db.update_one({"_id": office_id}, {"$set": {"regular_elections.candidates": {}, "regular_elections.voters": []}})
@@ -502,12 +479,7 @@ class Elections_:
     async def cast_vote_simple(self, player_id, office_id, candidate_id): # returns False if already voted, casts vote if not already voted
         db = await create_connection("Offices")
         office = await db.find_one({"_id": office_id})
-        for candidate in office["regular_elections"]["candidates"]:
-            if str(player_id) in office["regular_elections"]["votes"][str(candidate)]:  # i guess i have to use str() here because of the way mongodb stores the data
-                return False
-        office["regular_elections"]["votes"][str(candidate_id)].append(player_id)
-        await db.update_one({"_id": office_id}, {"$set": {"regular_elections": office["regular_elections"]}})
-        return True
+        
 
     async def add_voter(self, player_id, office_id):
         db = await create_connection("Offices")

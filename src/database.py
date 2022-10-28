@@ -633,6 +633,19 @@ player_example = {
 
 class Archives_:
 
+    player_schema = {
+        "_id": 0,
+        "can_vote": False,
+        "joined": [],
+        "left": [],
+        "name": [],
+        "display_name": [],
+        "nickname": [],
+        "discriminator": [],
+        "messages": 0,
+        "offices": {}
+    }
+
     async def get_player(self, player_id:int):
         db = await create_connection("Archives")
         return await db.find_one({"_id": player_id})
@@ -644,29 +657,38 @@ class Archives_:
         await db.update_one({"_id": user_id}, {"$set": {"github": {"id": id, "last_updated": datetime.datetime.now(), "login": name}}}, upsert=True)
 
     # update player in records, return message total, called in on_message, on_member_update, on_member_join, on_member_leave, etc
-    async def update_player(self, player, increment_messages = False):
+    async def update_player(self, player, increment_messages = False, is_in_server = True):
         db = await create_connection("Players")
         update = {}
 
         fetched = await db.find_one({"_id": player.id})
         if fetched is None:
-            insert = {}
+            insert = self.player_schema.copy()
             insert["_id"] = player.id
             insert["name"] = [{"name": player.name, "date": datetime.datetime.now()}]
             insert["nickname"] = [{"name": player.nick, "date": datetime.datetime.now()}]
             insert["display_name"] = [{"name": player.display_name, "date": datetime.datetime.now()}]
             insert["discriminator"] = [{"name": player.discriminator, "date": datetime.datetime.now()}]
-            insert["messages"] = 1
-            insert["last_seen"] = datetime.datetime.now()
-            insert["joined"] = datetime.datetime.now()
-            insert["can_vote"] = False
+            if is_in_server:
+                insert["joined"] = [datetime.datetime.now()]
+                insert["last_seen"] = datetime.datetime.now()
+                
             await db.insert_one(insert)
-            return insert["messages"]
+            return insert
         
-        name = fetched["name"][-1]["name"]
-        display_name = fetched["display_name"][-1]["name"]
-        discriminator = fetched["discriminator"][-1]["name"]
-        nickname = fetched["nickname"][-1]["name"]
+        update = {}
+
+        for key in self.player_schema:
+            if key not in fetched:
+                update[key] = self.player_schema[key]
+
+        if update:
+            await db.update_one({"_id": player.id}, {"$set": update})
+        
+        name         = fetched["name"][-1]["name"]         if len(fetched["name"])         else None
+        display_name = fetched["display_name"][-1]["name"] if len(fetched["display_name"]) else None
+        discriminator= fetched["discriminator"][-1]["name"]if len(fetched["discriminator"])else None
+        nickname     = fetched["nickname"][-1]["name"]     if len(fetched["nickname"])     else None
 
         if display_name != player.display_name:
             update["display_name"] = {"name": player.display_name, "date": datetime.datetime.now()}
@@ -691,7 +713,9 @@ class Archives_:
             "$unset": {"left": 1}
         })
 
-        return fetched["messages"] + 1 if increment_messages else fetched["messages"]
+        fetched["messages"] += 1 if increment_messages else 0
+
+        return fetched
 
 
     async def archive_motion(self, motion_id, status):  # called after motion is killed, either after execution or withdrawal

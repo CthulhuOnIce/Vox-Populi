@@ -100,11 +100,23 @@ class Players_:
         db = await create_connection("Players")
         return await db.find_one({"_id": player_id})
 
-    async def remove_player(self, player_id):
+    async def remove_player(self, player_id:int):
         db = await create_connection("Players")
         found = await self.find_player(player_id)
         if found is not None:
             await db.update_one({"_id": player_id}, {"$set": {"left": datetime.datetime.now()}})
+    
+    async def increment_stat(self, player_id:int, stat:str):
+        db = await create_connection("Players")
+        try:
+            await db.update_one({"_id": player_id}, {"$inc": {stat: 1}})
+        except Exception as e:
+            print(e)
+    
+    async def get_officers(self, office:str):
+        db = await create_connection("Players")
+        officers = await db.find({f"office.{office}.left_office": None}).to_list(None)
+        return officers
 
 Players = Players_()
 
@@ -274,8 +286,7 @@ class Motions_:
         now = datetime.datetime.now()
         motion_id = await self.generate_motion_id()
         db = await create_connection("Motions")
-        dbo = await create_connection("Officers")
-        await dbo.update_one({"_id": author}, {"$inc": {"stats.motions_submitted": 1}})
+        await Players.increment_stat(author, "motions_submitted")
         life = await Constitution.get_key("MotionLife")
         passratio = await Constitution.get_key("PreReferendumRequirement") if await self.motion_requires_referendum(motion) else await Constitution.get_key("MotionRequirement")
         insertme = {
@@ -312,36 +323,10 @@ class Motions_:
 
 Motions = Motions_()
 
-
-# The "officers" table lists every officer to have ever held office, and the appropriate 
-# information, such as terms_served_successively, terms_served_total, to determine
-# whether or not they are eligible for re-election or to run for a higher office.
-officer_example = {
-    "_id": 123456789012345678,  # player id
-    "office_id": "Legislator",  # office id
-    "terms_served_successively": 0,
-    "terms_served_total": 0,
-    "terms_missed_successively": 0,
-    "last_term_start": datetime.datetime.now(),
-    "last_term_end": None,  # set when they are no longer in office, used to determine if they are in office
-    "stats": {
-        "motions_submitted": 0,
-        "motions_passed": 0,
-        "motions_failed": 0,
-        "vote_success": 0,  # whether or not they voted on the winning side of a motion, determines competence
-        "vote_failure": 0,
-    }
-}
-
 ## Electoral Functions
 class Elections_:
 
     valid_flags = ["can_submit_motions", "can_vote_motions", "can_veto_motions"]
-
-    async def is_in_office(self, player_id, office_id):
-        player_id = str(player_id)
-        db = await create_connection("Officers")
-        return await db.find_one({"_id": player_id, "office_id": office_id, "last_term_end": None}) is not None
 
     async def enable_vote(self, player_id):
         db = await create_connection("Players")
@@ -425,15 +410,6 @@ class Elections_:
         office["restrictions"][requirement] = value
         await db.update_one({"_id": office_id}, {"$set": {"restrictions": office["restrictions"]}})
 
-    async def get_officers(self, office_id:str):
-        db = await create_connection("Officers")
-        found = await db.find({"office_id": office_id, "last_term_end": None}).to_list(None)
-        return found
-    
-    async def get_officer(self, officer_id:int):
-        db = await create_connection("Officers")
-        return await db.find_one({"_id": officer_id})
-
     async def set_office_requirements(self, office:dict, requirements:dict):
         for requirement in requirements:
             if requirement in office["restrictions_queue"]:
@@ -480,7 +456,6 @@ class Elections_:
         db = await create_connection("Offices")
         office = await db.find_one({"_id": office_id})
         
-
     async def add_voter(self, player_id, office_id):
         db = await create_connection("Offices")
         await db.update_one({"_id": office_id}, {"$addToSet": {"regular_elections.voters": player_id}})
@@ -491,95 +466,9 @@ class Elections_:
         office["regular_elections"]["voters"].remove(player_id)
         await db.update_one({"_id": office_id}, {"$set": {"regular_elections": office["regular_elections"]}})
 
-    async def increment_terms_missed(self, player_id):
-        db = await create_connection("Officers")
-        await db.update_one({"_id": player_id}, {"$inc": {"terms_missed_successively": 1}, "$set": {"terms_served_successively": 0}})
-
-    async def is_officer(self, player_id, office_id):
-        db = await create_connection("Officers")
-        return await db.find_one({"_id": str(player_id), "last_term_end": None, "office_id": office_id})
-    
-    # check if a player is currently in an office which has this flag enabled
-    async def player_has_flag(self, player_id, flag):
-        db = await create_connection("Officers")
-        officer = await db.find_one({"_id": str(player_id), "last_term_end": None})
-        if officer:
-            office = await self.get_office(officer["office_id"])
-            if flag in office["flags"]:
-                return True
-        return False
-
-    async def set_new_officer(self, officer:int, office_id:str):
-        self.set_new_officers([officer], office_id, demote_others=False)
-
-    async def set_new_officers(self, officers:list, office_id:str, demote_others = True):
-        db = await create_connection("Officers")
-        dbo = await create_connection("Offices")
-        office = await dbo.find_one({"_id": office_id})
-        for officer_id in officers:
-            new = False
-            officer = await db.find_one({"_id": officer_id})
-            if not officer:
-                new = True
-                officer = officer_example.copy()
-                officer["_id"] = officer_id
-            officer["office_id"] = office_id
-            officer["terms_served_successively"] += 1
-            officer["terms_missed_successively"] = 0
-            officer["terms_served_total"] += 1
-            officer["last_term_start"] = datetime.datetime.now()
-            officer["last_term_end"] = None
-            if new:
-                await db.insert_one(officer)
-            else:
-                await db.update_one({"_id": officer["_id"]}, {"$set": officer})
-
-        if demote_others:
-            for incombent in db.find({"last_term_end": None}):
-                if incombent["_id"] not in officers:
-                    await self.remove_officer(incombent["_id"], office_id)
-            # reset terms_served_successively for all officers who have gone at least half a term without being in office
-            # makes it so that you cant just drop out and run again to bypass term limits
-            # and cyclically resets everyones terms_served_successively
-            for officer in db.find({"last_term_end": {"$lt": datetime.datetime.now() - datetime.timedelta(days=office["regular_elections"]["term_length"]/2)}, "terms_served_successively": {"$gt": 0}}):
-                await self.reset_terms_served_successfully(officer["_id"])
-            await dbo.update_one({"_id": office_id}, {"$inc": {"generations": 1}})
-        # dbo.update_one({"_id": office_id}, {"$set": {"regular_elections.stage": "none"}})
-
-    async def remove_officer(self, player_id, office_id):
-        db = await create_connection("Officers")
-        await db.update_one({"_id": player_id, "office_id": office_id, "last_term_end": None}, {"$set": {"last_term_end": datetime.datetime.now()}})
-    
-    async def reset_terms_served_successfully(self, player_id):
-        db = await create_connection("Officers")
-        if await db.find_one({"_id": player_id}):
-            await db.update_one({"_id": player_id}, {"$set": {"terms_served_successively": 0}})
-    
-    async def is_eligible_for_office(self, candidate_id, office_id):
-
-        player = await  create_connection("Players")
-        player = await player.find_one({"_id": candidate_id})
-
-        past_officer = await create_connection("Officers")
-        past_officer = await past_officer.find_one({"_id": candidate_id})
-
-        office = await create_connection("Offices")
-        office = await office.find_one({"_id": office_id})
-        if office["restrictions"]["min_messages"]:
-            if player["messages"] < office["restrictions"]["min_messages"]:
-                return False
-        if office["restrictions"]["min_age_days"]:
-            if office["restrictions"]["min_age_days"] > (datetime.datetime.now() - player["joined"]).days:
-                return False
-        if past_officer is None:
-            return True
-        if office["restrictions"]["total_term_limit"]:
-            if past_officer["terms_served_total"] >= office["restrictions"]["total_term_limit"]:
-                return False
-        if office["restrictions"]["successive_term_limit"]:
-            if past_officer["terms_served_successively"] >= office["restrictions"]["successive_term_limit"]:
-                return False
-        return True
+    async def increment_terms_missed(self, office_id):
+        db = await create_connection("Players")
+        await db.update_many({"offices": {"$in": [office_id]}}, {"$inc": {"terms_missed_successively": 1, "$set": {"terms_served_successively": 0}}})
 
 Elections = Elections_()
 
@@ -617,33 +506,20 @@ class Radio_:
 
 Radio = Radio_()
 
-# Example player document
-player_example = {
-    "_id": 123456789012345679,
-    "name": [{"name": "Example", "date": datetime.datetime}],
-    "display_name": [{"name": "Example", "date": datetime.datetime}],
-    "profile_picture": [{"data": bin, "date": datetime.datetime}],
-    "messages": 0,
-    "last_seen": datetime.datetime,
-    "joined": [datetime.datetime, datetime.datetime],
-    "can_vote": False
-
-}       
- 
-
+# Example player document, not to be confused with the scge
 class Archives_:
 
     player_schema = {
         "_id": 0,
         "can_vote": False,
-        "joined": [],
-        "left": [],
-        "name": [],
-        "display_name": [],
-        "nickname": [],
-        "discriminator": [],
-        "messages": 0,
-        "offices": {}
+        "joined": [],             # [datetime.datetime, datetime.datetime],
+        "left": [],               # [datetime.datetime, datetime.datetime],
+        "name": [],               # [{"name": "Example", "date": datetime.datetime}],
+        "display_name": [],       # [{"name": "Example", "date": datetime.datetime}],
+        "nickname": [],           # [{"name": "Example", "date": datetime.datetime}],
+        "discriminator": [],      # [{"discriminator": "Example", "date": datetime.datetime}],
+        "offices": {},
+        "stats": {}
     }
 
     async def get_player(self, player_id:int):

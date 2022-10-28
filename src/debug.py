@@ -114,25 +114,6 @@ class Debug(commands.Cog):
             return
         await edit_me.edit(content="Motion executed.")
 
-    @commands.user_command(name="Make Legislator")  # create a user command for the supplied guilds
-    @commands.is_owner()
-    async def make_legislator(self, ctx, member: discord.Member):  # user commands return the member
-
-        if not await db.Elections.is_officer(member.id, "Legislator"):
-            await db.Elections.set_new_officer(member.id, "Legislator")
-            await ctx.respond(f"Made {member.mention} a legislator.", ephemeral=True)
-        else:
-            await ctx.respond(f"{member.mention} is already a legislator.", ephemeral=True)
-    
-    @commands.user_command(name="Fire Legislator")  # create a user command for the supplied guilds
-    @commands.is_owner()
-    async def fire_legislator(self, ctx, member: discord.Member):  # user commands return the member
-        if await db.Elections.is_officer(member.id, "Legislator"):
-            await db.Elections.remove_officer(member.id, "Legislator")
-            await ctx.respond(f"Fired {member.mention} from the legislature.", ephemeral=True)
-        else:
-            await ctx.respond(f"{member.mention} is not a legislator.", ephemeral=True)
-
 def setup(bot, config):
     global C
     C = config

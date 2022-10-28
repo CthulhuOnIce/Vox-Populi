@@ -13,6 +13,7 @@ from . import motionenforcement as ME
 from . import quickinputs as qi
 from . import timestamps as ts
 from .news import broadcast
+from . import offices
 
 C = {}
 
@@ -25,7 +26,7 @@ class Legislation(commands.Cog):
     @slash_command(name='submotion', description='Submit a new motion.')
     # @commands.custom_check(is_legislator)
     async def submotion(self, ctx):
-        if not await db.Elections.player_has_flag(ctx.author.id, 'can_submit_motions'):
+        if not offices.Elections.player_has_flag(ctx.author.id, 'can_submit_motions'):
             return await ctx.send('You do not have permission to submit motions.')
         if ctx.author.id in writers_room:
             await ctx.respond("You are already writing a motion.", ephemeral=True)
@@ -62,7 +63,7 @@ class Legislation(commands.Cog):
             return
 
         if motion["votetype"] != "referendum":
-            if not await db.Elections.player_has_flag(ctx.author.id, "can_vote_motions"):
+            if not offices.player_has_flag(ctx.author.id, "can_vote_motions"):
                 await ctx.respond("This motion is not a referendum.", ephemeral=True)
                 return
 

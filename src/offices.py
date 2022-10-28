@@ -293,11 +293,8 @@ class Office:
         if not office:
             raise ValueError("Office not found")
 
-
-        for officer in await db.Elections.get_officers(office["_id"]):
-            user = self.guild.get_member(officer["_id"])
-            if not user:  pass # User left the server, TODO: remove from office
-            self.members.append(user)
+        for officer in await db.Players.get_officers(self.name):
+            self.members.append(self.guild.get_member(officer))
         
         Offices.append(self)
 
@@ -313,7 +310,6 @@ class Office:
 
     async def is_eligible_candidate(self, member):
         player = await db.Archives.get_player(member.id)
-        officer = await db.Elections.get_officer(member.id)
         if self.min_messages:
             if player.messages < self.min_messages:
                 return False
@@ -322,12 +318,13 @@ class Office:
             if joined:
                 if (datetime.now() - joined).days < self.min_age_days:
                     return False
-        if officer:
+        if self.office.id in player["offices"]:
+            office = player["offices"][self.office.id]
             if self.total_term_limit:
-                if officer["terms_served_total"] >= self.total_term_limit:
+                if office["terms_served_total"]        >= self.total_term_limit:
                     return False
             if self.successive_term_limit:
-                if officer["terms_served_successively"] >= self.successive_term_limit:
+                if office["terms_served_successively"] >= self.successive_term_limit:
                     return False
         return True
 
@@ -347,6 +344,13 @@ def get_office(name:str) -> Office:
         if office.name == name:
             return office
     return None
+
+def player_has_flag(player, flag):
+    for office in Offices:
+        if player in office.members:
+            if flag in office.flags:
+                return True
+    return False
 
 async def populate(bot, config):
     offices = await db.Elections.get_all_offices()

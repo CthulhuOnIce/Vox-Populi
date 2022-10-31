@@ -8,7 +8,7 @@ from typing import Optional
 import discord
 import pytz
 from discord import option, slash_command
-from discord.ext import commands
+from discord.ext import commands, tasks
 
 from . import database as db
 from . import quickinputs as qi
@@ -193,13 +193,14 @@ class RecordKeeping(commands.Cog):
     async def on_member_leave(self, member):
         if member.bot:
             return
+        await db.StatTracking.increment_leaves()
         await db.Archives.update_player(member)
-        await db.StatTracking.remove_player(member.id)
     
     @commands.Cog.listener()
     async def on_member_join(self, member):
         if member.bot:
             return
+        await db.StatTracking.increment_joins()
         await db.Archives.update_player(member)
     
     @commands.Cog.listener()
@@ -214,15 +215,22 @@ class RecordKeeping(commands.Cog):
             return
         if message.guild is not C["guild"]:
             return
-        # TODO: add to daily message count
+        await db.StatTracking.increment_daily_messages(message.author)
         messages = await db.Archives.update_player(message.author, True)
         player = await db.Players.find_player(message.author.id)
-        if not player["can_vote"]:
+        if not player["can_vote"]:  # dont bother doing all the work if they can vote anyway
             const = await db.Constitution.get_constitution()
             if messages >= const["VoterMinMessages"] and message.author.created_at <= datetime.datetime.utcnow().replace(tzinfo=pytz.UTC) - datetime.timedelta(days=const["VoterAccountAge"]):
                 await message.channel.send(f"Congratulations {message.author.mention}!\nYou have reached {const['VoterMinMessages']} messages and an account age of {const['VoterAccountAge']} days.\nYou can now vote in elections!")
                 self.bot.dispatch(event_name="new_voter", member=message.author)
                 await db.Elections.enable_vote(message.author.id)
+    
+    @tasks.loop(minutes=10)
+    async def check_stat_cashout(self):
+        if datetime.datetime.utcnow().hour == 0:
+            if not datetime.datetime.utcnow().replace(tzinfo=pytz.UTC).date() == datetime.datetime.fromtimestamp(db.StatTracking["start_timestamp"]).replace(tzinfo=pytz.UTC).date():
+                stats = await db.StatTracking.cash_out()
+
 
 def setup(bot, config):
     global C

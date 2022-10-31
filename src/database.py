@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import datetime
+import pickle
 from multiprocessing.sharedctypes import Value
 from sys import api_version
 
@@ -9,6 +10,7 @@ import motor
 import motor.motor_asyncio
 import pymongo
 import yaml
+import os 
 
 try:
     with open("config.yml", "r") as r:
@@ -121,10 +123,82 @@ class Players_:
 Players = Players_()
 
 class StatTracking_:
+
+    # its kind of weird to have this in a dictionary instead of through variables
+    # and it's inefficient to keep writing a file like this
+    # but the script has to be able to be killed and restarted with no data loss
+    # because the source module's update feature can kill the bot to apply updates at any time
+    stats = {
+        "start_timestamp": datetime.date.today(),
+        "end_timestamp": datetime.date.today(),
+        "messages": 0,
+        "messages_by_user": {},
+        "joins": 0,
+        "leaves": 0,
+        "players_start": 0,
+        "players_end": 0,
+    }
+
+    default_stats = stats.copy()  # used to reload stats at cashout
+
+    def __init__(self):
+        if not os.path.exists("data/stats.p"):
+            return
+        with open("data/stats.p", "rb") as r:
+            self.stats = pickle.load(r)
     
-    async def increment_daily_messages(self):
-        db = await create_connection("Global")
-        await db.update_one({"_id": "MonthlyStats"}, {"$inc": {f"{datetime.datetime.now().strftime('%m-%d')}.count": 1}}, upsert=True)
+    def save(self):
+        with open("data/stats.p", "wb") as w:
+            pickle.dump(self.stats, w)
+    
+    def increment_joins(self):
+        self.stats["joins"] += 1
+        self.save()
+    
+    def increment_leaves(self):
+        self.stats["leaves"] += 1
+        self.save()
+
+    def increment_daily_messages(self, author):
+        key = author.id
+        if key not in self.stats["messages_by_user"]:
+            self.stats["messages_by_user"][key] = 0
+        self.stats["messages"] += 1
+        self.stats["messages_by_user"][key] += 1
+        self.save()
+
+    async def cash_out(self, guild) -> dict:
+        """Clears the stat tracker and returns the complete stat dict
+
+        Args:
+            guild (discord.guild): The guild the server is attached to (C["guild"])
+
+        Returns:
+            dict: self.stats before it was cleared
+        """        
+        # cap off the old stats
+        self.stats["players_end"] = guild.member_count
+        self.stats["end_timestamp"] = datetime.datetime.now()
+
+        # save them and reload new ones
+        ret = self.stats.copy()
+        db = await create_connection("DailyStats")
+        await db.insert_one(self.stats)
+        self.stats = self.default_stats.copy()
+        
+        # start the new stats
+        self.stats["start_timestamp"] = datetime.datetime.now()
+        self.stats["players_start"] = guild.member_count
+        self.save()
+        return ret
+
+    # this is the module which handles the day-to-day statistical tracking of the bot.
+
+    async def generate_daily_report(self):
+        return
+
+    async def generate_monthly_report(self):
+        return
 
 StatTracking = StatTracking_()
 
@@ -159,13 +233,7 @@ class Rules_:
         if not motion:
             return
         if not ruleid in motion["rules"]:
-            return
-        return motion["rules"][ruleid]
-    
-    async def get_rules_from_motion(self, motionid):
-        db = await create_connection("Rules")
-        motion = await db.find_one({"_id": motionid})
-        if not motion:
+            return        # TODO: add to daily message count
             return
         return motion["rules"]
 

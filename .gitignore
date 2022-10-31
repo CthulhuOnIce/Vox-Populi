@@ -13,3 +13,4 @@ logs/*
 !logs/.gitkeep
 .fleet/*
 .idea/*
+data/*.p

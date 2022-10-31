@@ -200,14 +200,14 @@ class RecordKeeping(commands.Cog):
     async def on_member_join(self, member):
         if member.bot:
             return
-        await db.StatTracking.increment_joins()
+        db.StatTracking.increment_joins()
         await db.Archives.update_player(member)
     
     @commands.Cog.listener()
     async def on_member_update(self, before, after):
         if after.bot:
             return
-        await db.Archives.update_player(after)
+        db.Archives.update_player(after)
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -215,8 +215,8 @@ class RecordKeeping(commands.Cog):
             return
         if message.guild is not C["guild"]:
             return
-        await db.StatTracking.increment_daily_messages(message.author)
-        messages = await db.Archives.update_player(message.author, True)
+        db.StatTracking.increment_daily_messages(message.author)
+        messages = await db.Archives.update_player(message.author, True)  # true = update message count
         player = await db.Players.find_player(message.author.id)
         if not player["can_vote"]:  # dont bother doing all the work if they can vote anyway
             const = await db.Constitution.get_constitution()

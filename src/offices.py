@@ -297,7 +297,7 @@ class Office:
             raise ValueError("Office not found")
 
         for officer in await db.Players.get_officers(self.name):
-            self.members.append(self.guild.get_member(officer))
+            self.members.append(self.guild.get_member(officer["_id"]))
         
         Offices.append(self)
 

@@ -654,7 +654,7 @@ class Archives_:
             "$push": update, 
             "$inc": {"messages": 1 if increment_messages else 0}, 
             "$set": {"last_seen": datetime.datetime.now() if increment_messages else fetched["last_seen"]},
-            "$unset": {"left": 1}
+            "$unset": {"left": 1} if is_in_server and "left" in fetched else {}
         })
 
         fetched["messages"] += 1 if increment_messages else 0

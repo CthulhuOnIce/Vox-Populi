@@ -18,7 +18,6 @@ debug = discord.SlashCommandGroup("debug", "debugging commands")
 
 class Debug(commands.Cog):
     def __init__(self, bot):
-        global greetings
         self.bot = bot
 
     @debug.command(name='dpag', description='Test embed paginator')

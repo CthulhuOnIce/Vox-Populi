@@ -11,3 +11,6 @@ def long_text(datetime:datetime.datetime): # October 19, 2022 at 9:03 PM
 
 def simple_day(datetime:datetime.datetime):  # 19 October 2022
     return datetime.strftime("%d %B %Y")
+
+def simple_datetime(datetime:datetime.datetime):  # 19 October 2022 at 9:03 PM
+    return datetime.strftime("%d %B %Y at %l:%M %p")

@@ -129,8 +129,9 @@ class RecordKeeping(commands.Cog):
                 await ctx.respond("User does not exist.", ephemeral=True)
                 return
         
-        embed = discord.Embed(title=f"Player Information for {player.display_name}", color=0x52be41)
+        embed = discord.Embed(title=f"Player Information for {player.display_name}{ ' ('+player.name+')' if player.display_name != player.name else ''}", color=0x52be41)
         embed.add_field(name="Name", value=player.display_name, inline=False)
+        embed.add_field(name="Username", value=f"{player.name}#{player.discriminator}", inline=False)
         embed.add_field(name="ID", value=player.id, inline=False)
         embed.add_field(name="Created", value=ts.simple_day(player.created_at), inline=False)
         if player.avatar:
@@ -138,7 +139,7 @@ class RecordKeeping(commands.Cog):
         player_info = await db.Players.find_player(player.id)
         if player_info:
             embed.add_field(name="Message Count", value=player_info["messages"], inline=False)
-            embed.add_field(name="Last Seen", value=ts.simple_day(player_info["last_message"]), inline=False)
+            embed.add_field(name="Last Seen", value=ts.simple_datetime(player_info["last_seen"]), inline=False)
             if "left" in player_info:
                 embed.add_field(name="left", value=player_info["left"], inline=False)
             status = "Active - Can Vote" if player_info["can_vote"] else "Active - Cannot Vote"

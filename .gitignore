@@ -11,3 +11,5 @@ lib/*
 .vscode/settings.json
 logs/*
 !logs/.gitkeep
+.fleet/*
+.idea/*

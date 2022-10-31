@@ -2,7 +2,6 @@ import asyncio
 from datetime import datetime, timedelta
 
 import discord
-
 from . import database as db
 from . import quickinputs as qi
 from . import timestamps as ts
@@ -13,11 +12,12 @@ C = None
 Offices = []
 
 def th(num:int):  # returns the ordinal of a number
-    if num == 1:
+    num = str(num)
+    if num.endswith('1'):
         return f"{num}st"
-    elif num == 2:
+    elif num.endswith('2'):
         return f"{num}nd"
-    elif num == 3:
+    elif num.endswith('3'):
         return f"{num}rd"
     else:
         return f"{num}th"
@@ -137,6 +137,7 @@ class ElectionManager:
         nomination_day = term_end - timedelta(days=(self.nomination_stage + self.campaigning_stage + self.voting_stage + self.lame_duck_stage))  # official start of election period
 
         if self.next_stage == None:  # election is not running whatsoever
+
             if datetime.now() > nomination_day:  # starts election with nomination
                 self.bot.dispatch(event_name="election_start", office=self.office.name)
                 broadcast(self.bot, "election", 5, f"Election for {self.office.name} is opening soon! You can now nominate yourself for the position, if eligible.")
@@ -144,8 +145,10 @@ class ElectionManager:
                 self.stage = "nomination"
                 await db.Elections.set_election_stage(self.office.name, self.next_stage, self.stage)  # sets the current stage to nomination, expires in x days, end
                 return
+
         else:
             if datetime.now() > self.next_stage:  # if the current stage has expired
+
                 if self.stage == "nomination":  # nomination -> campaigning
                     # TODO: check if there are enough candidates, if not, extend the nomination period or concede the election by default
                     await db.Elections.increment_terms_missed(self.office.name)

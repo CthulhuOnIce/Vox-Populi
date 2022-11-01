@@ -33,20 +33,60 @@ Constitution:
     # discord.gg/{VanityCode}
     VanityCode: AthensProject
   Offices:
-    Legislator:
-      Color: 0x1
-      Name: New Name for the Role
-      Flags:  # overwrites the flags to be only these
-        - can_submit_motions
-      AddFlags:  # adds these flags to the currently existing flag set
-        - can_veto_motions
-      RemFlags:  # removes these flags from the currently existing flag set
-        - can_veto_motions
-      OfficeRequirements:
-        MinimumMessages: 0 # 0 - disabled, anything else - enabled
-        MinimumAge: 0  # minimum time in days since the user first joined
-        TotalTermLimit: 0
-        SuccessiveTermLimit: 0
+    CreateOffice:
+      - Name: Judge
+        Color: 0x2
+        Seats: 0
+        DecisionMaking: individual  # individual - unilateral power to exercise powers, collective - must be voted on
+        SetFlags:
+          - can_veto_motions
+        AddFlags:
+          - can_veto_motions
+        RemFlags:
+          - can_veto_motions
+        OfficeRequirements:
+          MinimumMessages: 0 # 0 - disabled, anything else - enabled
+          MinimumAge: 0  # minimum time in days since the user first joined
+          TotalTermLimit: 0
+          SuccessiveTermLimit: 0
+        # appointers can appoint people directly as opposed to holding elections, if both appointers and regular elections are set, 
+        # i dont know what to do yet!
+        Appointers:  
+          - Legislator
+        Elections:
+          Type: simple
+          TermLength: 60
+          Stages:
+            Nomination: 7
+            Campaigning: 7
+            Voting: 2
+            LameDuck: 7
+    EditOffice:
+      - Name: Judge
+        Color: 0x2
+        Seats: 0
+        DecisionMaking: individual  # individual - unilateral power to exercise powers, collective - must be voted on
+        SetFlags:
+          - can_veto_motions
+        AddFlags:
+          - can_veto_motions
+        RemFlags:
+          - can_veto_motions
+        OfficeRequirements:
+          MinimumMessages: 0 # 0 - disabled, anything else - enabled
+          MinimumAge: 0  # minimum time in days since the user first joined
+          TotalTermLimit: 0
+          SuccessiveTermLimit: 0
+        Appointers:
+          - Legislator
+        Elections:
+          Type: simple
+          TermLength: 60
+          Stages:
+            Nomination: 7
+            Campaigning: 7
+            Voting: 2
+            LameDuck: 7
 Rules:
   Add:
     - This is a new rule that will be added to the bill

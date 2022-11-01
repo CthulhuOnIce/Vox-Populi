@@ -6,6 +6,7 @@ import yaml
 from discord.ext import commands
 
 from . import database as db
+from . import offices
 from .news import broadcast
 
 # just a template to copy and paste for use in developing cogs in the future
@@ -514,34 +515,70 @@ class Motion:
                 await db.Constitution.broad_update(general)
 
             if "Offices" in self.data["Constitution"]:
-                for Office in self.data["Constitution"]["Offices"]:
-                    office = self.data["Constitution"]["Offices"][Office]
-                    OF = await db.Elections.get_office(Office)
-                    if not OF: continue  # TODO: error
+                for cmd in self.data["Constitution"]["Offices"]:
+                    data = self.data["Constitution"]["Offices"][cmd]
+                    if cmd == "CreateOffice":
+                        pass
 
-                    if "Name" in office or "Color" in office:  # role editing
-                        payload = {}
-                        role = await self.guild.get_role(office["roleid"])
-                        # TODO: this means that someone deleted the role, so we should probably delete the office
-                        if not role: continue
-                        if "Name" in office:
-                            payload["name"] = office["Name"]
-                        if "Color" in office:
-                            payload["color"] = office["Color"]
-                        if payload:
-                            await role.edit(**payload)
+                    elif cmd == "EditOffice":
+                        office = offices.get_office(data["Name"])
+
+                        if not office:
+                            continue
+                        role = self.guild.get_role(office.role_id)
+                        if not role:
+                            # TODO: handle this
+                            continue
+
+                        if "NewName" in data:
+                            office.name = data["Name"]
+                            await role.edit(name=data["Name"])
+
+                        if "Color" in data:
+                            office.color = data["Color"]
+                            await role.edit(color=discord.Color(data["Color"]))
+
+                        if "Seats" in data:
+                            office.seats = data["Seats"]
+
+                        if "Hoist" in data:
+                            await role.edit(hoist=data["Hoist"])
+
+                        if "Mentionable" in data:
+                            await role.edit(mentionable=data["Mentionable"])
+                        
+                        
+                        
+                    elif cmd == "DeleteOffice":
+                        pass
+
+                    # office = self.data["Constitution"]["Offices"][Office]
+                    # OF = await db.Elections.get_office(Office)
+                    # if not OF: continue  # TODO: error
+
+                    # if "Name" in office or "Color" in office:  # role editing
+                    #     payload = {}
+                    #     role = await self.guild.get_role(office["roleid"])
+                    #     # TODO: this means that someone deleted the role, so we should probably delete the office
+                    #     if not role: continue
+                    #     if "Name" in office:
+                    #         payload["name"] = office["Name"]
+                    #     if "Color" in office:
+                    #         payload["color"] = office["Color"]
+                    #     if payload:
+                    #         await role.edit(**payload)
                     
-                    if "Flags" in office:
-                        await db.Elections.set_flags(Office, office["Flags"])
+                    # if "Flags" in office:
+                    #     await db.Elections.set_flags(Office, office["Flags"])
 
-                    if "AddFlags" in office:
-                        await db.Elections.add_flags(Office, office["AddFlags"])
+                    # if "AddFlags" in office:
+                    #     await db.Elections.add_flags(Office, office["AddFlags"])
 
-                    if "RemFlags" in office:
-                        await db.Elections.rem_flags(Office, office["RemFlags"])  
+                    # if "RemFlags" in office:
+                    #     await db.Elections.rem_flags(Office, office["RemFlags"])  
 
-                    if "OfficeRequirements" in office:
-                        await db.Elections.set_office_requirements_queue(OF, office["OfficeRequirements"])
+                    # if "OfficeRequirements" in office:
+                    #     await db.Elections.set_office_requirements_queue(OF, office["OfficeRequirements"])
 
         if "Rules" in self.data:
             if "Add" in self.data["Rules"]:

@@ -250,20 +250,38 @@ class ElectionManager:
             self.voters.remove(ctx.author)
             await db.Elections.remove_voter(ctx.author.id, self.office.name)
             await ctx.respond("Vote cancelled.", ephemeral=True)
+    
+    def to_dict(self):
+        d =  { "type": self.election_style,
+                "last_election": self.last_election,
+                "term_length": self.term_length,
+                "stage": self.stage,
+                "next_stage": self.next_stage,
+                "candidates": {candidate.id: self.candidates[candidate] for candidate in self.candidates},
+                "voters": [candidate.id for candidate in self.voters],
+                "stages": {
+                    "nomination": self.nomination_stage,
+                    "campaigning": self.campaigning_stage,
+                    "voting": self.voting_stage,
+                    "lame_duck": self.lame_duck_stage
+                }
+            }
+        return d
 
 class RankedChoice(ElectionManager):
     def __init__(self, office, reg_elections:dict):
         super().__init__(office, reg_elections)
 
 class Office:
-    name         = None
-    role_id      = None
-    guild        = None
-    bot          = None
-    members      = []
-    flags        = []
-    generataion  = 0
-    seats        = 0
+    name            = None
+    role_id         = None
+    guild           = None
+    bot             = None
+    members         = []
+    flags           = []
+    generataion     = 0
+    seats           = 0
+    unilateral_power= False  # set to true for offices like judges, who can (theoretically) unilaterally veto motions that break defined rules
 
     min_messages          = 0
     min_age_days          = 0
@@ -273,13 +291,48 @@ class Office:
     # regualar election handline
     election_manager:ElectionManager = None
 
-    async def New(self, bot, config, office):
-        self.name = office["_id"]
-        self.seats = office["seats"]
-        self.role_id = office["roleid"]
-        self.generataion = office["generations"]
-        self.bot = bot
-        self.guild = bot.get_guild(config['guild_id'])
+    async def delete(self):
+        dbo = await db.create_connection("Offices")
+        await dbo.delete_one({"_id": self.name})
+
+        dbp = await db.create_connection("Players")
+        await dbp.update_many({f"office.{self.name}.left_office": None}, {f"office.{self.name}.left_office": datetime.datetime.now()})
+
+        await self.role.delete()
+
+        del self
+
+    async def save(self):
+        payload = {
+            "_id": self.name,
+            "role_id": self.role_id,
+            "flags": self.flags,
+            "generations": self.generataion,
+            "unilateral_power": self.unilateral_power,
+            "restrictions": {
+                "min_messages": self.min_messages,
+                "min_age_days": self.min_age_days,
+                "total_term_limit": self.total_term_limit,
+                "successive_term_limit": self.successive_term_limit
+            },
+        }
+
+        if self.election_manager:
+            payload["regular_elections"] = self.election_manager.to_dict()
+
+        dbo = await db.create_connection("Offices")
+        # FIXME: if changing name, replace_one probably needs to be used
+        await dbo.update_one({"_id": self.name}, {"$set": payload}, upsert=True)
+
+    async def FromDB(self, bot, config, office):
+        self.name             = office["_id"]
+        self.seats            = office["seats"]
+        self.role_id          = office["roleid"]
+        self.generataion      = office["generations"]
+        self.unilateral_power = office["unilateral_power"]
+
+        self.bot              = bot
+        self.guild            = bot.get_guild(config['guild_id'])
 
         if "regular_elections" in office:
             if office["regular_elections"]["type"] == "simple":
@@ -300,6 +353,7 @@ class Office:
             self.members.append(self.guild.get_member(officer["_id"]))
         
         Offices.append(self)
+        return self
 
     def role(self):
         return self.guild.get_role(self.role_id)
@@ -311,6 +365,8 @@ class Office:
         database = self.database()
         db.Elections.set_office_requirments_queue(database, requirements)
 
+
+    # TODO: handle how the bot lets people hold multiple offices at a time
     async def is_eligible_candidate(self, member):
         player = await db.Archives.get_player(member.id)
         if self.min_messages:
@@ -358,4 +414,4 @@ def player_has_flag(player, flag):
 async def populate(bot, config):
     offices = await db.Elections.get_all_offices()
     for office in offices:
-        await Office().New(bot, config, office)
+        await Office().FromDB(bot, config, office)

@@ -51,14 +51,6 @@ async def populate_offices():
 
 Test(populate_offices, "Populate offices")
 
-async def advance_election_stage():
-    con = await database.create_connection("Elections")
-    for office in offices.Offices:
-        if not office.election_manager:
-            continue
-        await office.election_manager.tick(True)
-    await con.update_many({}, {"$set": {"stage": "voting"}})
-
 async def submit_motion():
     template_motion = {
         "Heading": {

@@ -70,7 +70,7 @@ class RecordKeeping(commands.Cog):
             for topic in help_topics:
                 embed.add_field(name=topic, value=help_topics[topic], inline=False)
             await ctx.respond(embed=embed, ephemeral=True)
-        
+
         topic = topic.lower()
         if topic not in help_topics:
             await ctx.respond(f"Unknown topic: {topic}", ephemeral=True)
@@ -79,8 +79,7 @@ class RecordKeeping(commands.Cog):
     @slash_command(name='list_channels', description='List all channels available for news dispatches.')
     async def list_channels(self, ctx):
         channels = await db.Radio.frequencies()
-        msg = "List of channels:\n"
-        msg += "\n - ".join(channels)
+        msg = "List of channels:\n" + "\n - ".join(channels)
         await ctx.respond(msg, ephemeral=True)
 
     @slash_command(name='listen', description='Listen to a channel for dispatches')
@@ -135,7 +134,7 @@ class RecordKeeping(commands.Cog):
             except discord.NotFound:
                 await ctx.respond("User does not exist.", ephemeral=True)
                 return
-        
+
         embed = discord.Embed(title=f"Player Information for {player.display_name}", color=0x52be41)
         embed.add_field(name="Name", value=player.display_name, inline=False)
         embed.add_field(name="ID", value=player.id, inline=False)

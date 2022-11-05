@@ -71,22 +71,23 @@ class Motion:
         return None
     
     def find_channel_position(self, position, preferred_type = discord.TextChannel):
-        if "Above" or "Below" in position:
-            target = self.get_channel(position["Above"] if "Above" in position else position["Below"], preferred_type)
-            if not target:
-                return "The channel you are trying to move the channel to does not exist."
-            return max(target.position - 1 if "Above" in position else target.position + 1, 0)
-        elif "Absolute" in position:
-            return position["Absolute"]
+        target = self.get_channel(position["Above"] if "Above" in position else position["Below"], preferred_type)
+        return (
+            max(
+                target.position - 1
+                if "Above" in position
+                else target.position + 1,
+                0,
+            )
+            if target
+            else "The channel you are trying to move the channel to does not exist."
+        )
 
     def find_role_position(self, position):
-        if "Above" or "Below" in position:
-            target = self.get_role(position["Above"] if "Above" in position else position["Below"])
-            if not target:
-                return "The role you are trying to move the role to does not exist."
-            return target.position + 1 if "Above" in position else target.position - 1
-        elif "Absolute" in position:
-            return position["Absolute"]
+        target = self.get_role(position["Above"] if "Above" in position else position["Below"])
+        if not target:
+            return "The role you are trying to move the role to does not exist."
+        return target.position + 1 if "Above" in position else target.position - 1
     
     def generate_channel_permissions(self, overwrite, channel):
         # 'Overwrites' = [{'Role': 'everyone', 'Overwrites': {'view_channel': False}}, {'Role': 'Secret Club Member', 'Overwrites': {'view_channel': True}}]
@@ -120,10 +121,10 @@ class Motion:
         new_channel = None
         if "Clone" in motion_data:
             cloned_channel = None
-            cloned_channel = self.get_channel(motion_data["Clone"])
-            if not cloned_channel:
+            if cloned_channel := self.get_channel(motion_data["Clone"]):
+                new_channel = await cloned_channel.clone()
+            else:
                 return "The text channel you are trying to clone does not exist."
-            new_channel = await cloned_channel.clone()
         else:
             new_channel = await self.guild.create_text_channel(motion_data["Name"])
         await new_channel.edit(name=motion_data["Name"])
@@ -181,10 +182,12 @@ class Motion:
         new_channel = None
         if "Clone" in motion_data:
             cloned_channel = None
-            cloned_channel = self.get_channel(motion_data["Clone"], discord.VoiceChannel)
-            if not cloned_channel:
+            if cloned_channel := self.get_channel(
+                motion_data["Clone"], discord.VoiceChannel
+            ):
+                new_channel = await cloned_channel.clone()
+            else:
                 return "The voice channel you are trying to clone does not exist."
-            new_channel = await cloned_channel.clone()
         else:
             new_channel = await self.guild.create_voice_channel(motion_data["Name"])
         await new_channel.edit(name=motion_data["Name"])
@@ -200,7 +203,7 @@ class Motion:
                 if isinstance(target, str):
                     return target
                 await selected_channel.set_permissions(target, overwrite=overwrites_discord)
-    
+
         payload = {}
         if "Name" in motion_data:
             payload["name"] = motion_data["Name"]
@@ -222,10 +225,12 @@ class Motion:
         new_category = None
         if "Clone" in motion_data:
             cloned_category = None
-            cloned_category = self.get_channel(motion_data["Clone"], discord.CategoryChannel)
-            if not cloned_category:
+            if cloned_category := self.get_channel(
+                motion_data["Clone"], discord.CategoryChannel
+            ):
+                new_category = await cloned_category.clone()
+            else:
                 return "The category you are trying to clone does not exist."
-            new_category = await cloned_category.clone()
         else:
             new_category = await self.guild.create_category(motion_data["Name"])
         await new_category.edit(name=motion_data["Name"])
@@ -242,7 +247,7 @@ class Motion:
                 if isinstance(target, str):
                     return target
                 await selected_category.set_permissions(target, overwrite=overwrites_discord)
-    
+
         payload = {}
         if "Name" in motion_data:
             payload["name"] = motion_data["Name"]
@@ -315,13 +320,13 @@ class Motion:
                 await member.remove_roles(selected_role)
 
     async def remove_role(self, motion_data: dict):
-        selected_role = self.get_role(motion_data["Role"])
-        if not selected_role:
+        if selected_role := self.get_role(motion_data["Role"]):
+            await selected_role.delete()
+        else:
             return "The role you are trying to remove does not exist."
-        await selected_role.delete()
 
     async def ban_player(self, motion_data: dict):
-        if not "Reason" in motion_data or len(motion_data["Reason"]) <= 30:
+        if "Reason" not in motion_data or len(motion_data["Reason"]) <= 30:
             return "The reason you are trying to ban someone for is too short or doesn't exist."
         for member in self.guild.members:
             if member.id in motion_data["ID"]:
@@ -357,22 +362,23 @@ class Motion:
             If the presence isnt required and the key is not present, it will return False.
             Otherwise, it will return the error as a string"""
             if key in dictionary:
-                if isinstance(dictionary[key], type):
-                    return False
-                else:
-                    return f"The {key} you are trying to set is not a valid {key}. Valid {key}s are {type}s."
+                return (
+                    False
+                    if isinstance(dictionary[key], type)
+                    else f"The {key} you are trying to set is not a valid {key}. Valid {key}s are {type}s."
+                )
+
+            if requires_presence:
+                return f"The {key} you are trying to set does not exist."
             else:
-                if requires_presence:
-                    return f"The {key} you are trying to set does not exist."
-                else:
-                    return False
-        
+                return False
+
         def str_within_threshold(string, maximum:int, minimum:int = 0):
             if len(string) >= minimum and len(string) <= maximum:
                 return False
             else:
                 return f"The string you are trying to set is not within the threshold of {minimum} and {maximum} characters."
-        
+
         def num_within_threshold(integer, maximum, minimum = 0):
             if integer >= minimum and integer <= maximum:
                 return False
@@ -395,11 +401,11 @@ class Motion:
 
         if error := search_and_validate(motion_data["Heading"], "Description", str):
             return error
-        
+
         if len(motion_data["Heading"]["Description"]) < 50:
             return "The motion data heading description is too short."
 
-        
+
         # constitution
         if "Constitution" in motion_data:
             if error := search_and_validate(motion_data, "Constitution", dict):
@@ -447,7 +453,7 @@ class Motion:
                             return error
                         if error := num_within_threshold(motion_data["Constitution"]["General"][requirement], 1, 0.5):
                             return error
-            
+
             if "OfficeRequirements" in motion_data["Constitution"]:
                 if error := search_and_validate(motion_data["Constitution"], "OfficeRequirements", dict):
                     return error
@@ -461,7 +467,7 @@ class Motion:
                         if error := num_within_threshold(m_office["MinimumMessages"], 10000, 0):
                             return error
 
-        
+
         self.validated = True
         return True
 
@@ -472,13 +478,13 @@ class Motion:
             return "The motion data has not been validated."
         print(f"Executing motion {self.motion_id} {self.data['Heading']['Title']}")
 
-        
+
         # if not self.is_referendum and await db.Motions.motion_requires_referendum(self.data):  # motion passed, but requires referendum, so convert to referendum and return
         #    ref = await db.Motions.motion_to_referendum(self.data)
         #    broadcast(self.bot, 'motion', 4, f"Motion {ref['original']['_id']}: {ref['title']} has passed and requires a referendum.\nReferendum ID: {ref['_id']}\nExpires: {ref['expires'].strftime('%Y-%m-%d %H:%M:%S')}")
         #    self.referendum_created = True
         #    return
-    
+
         # Execute Constitution Changes
         if "Constitution" in self.data:
 
@@ -493,9 +499,10 @@ class Motion:
                     payload["icon"] = base64.b64decode(guild["Icon"])
                 if "Banner" in guild:
                     payload["banner"] = base64.b64decode(guild["Banner"])
-                if "VerificationLevel" in guild:
-                    if guild["VerificationLevel"] in vars(discord.VerificationLevel):  # :troll:
-                        payload["verification_level"] = vars(discord.VerificationLevel)[guild["VerificationLevel"]]
+                if "VerificationLevel" in guild and guild[
+                    "VerificationLevel"
+                ] in vars(discord.VerificationLevel):
+                    payload["verification_level"] = vars(discord.VerificationLevel)[guild["VerificationLevel"]]
                 if "AllowInvites" in guild:
                     payload["disable_invites"] = not guild["AllowInvites"]
                 if "VanityCode" in guild:
@@ -511,19 +518,18 @@ class Motion:
 
             if "OfficeRequirements" in self.data["Constitution"]:
                 for Office in self.data["Constitution"]["OfficeRequirements"]:
-                    if await db.Elections.get_office(Office):  # FIXME: Optimize this
-                        OR = self.data["Constitution"]["OfficeRequirements"][Office]
-                        if "MinimumMessages" in OR:
-                            await db.Elections.set_office_requirement(Office, "min_messages", OR["MinimumMessages"])
-                        if "MinimumAge" in OR:
-                            await db.Elections.set_office_requirement(Office, "min_age_days", OR["MinimumAge"])
-                        if "TotalTermLimit" in OR:
-                            await db.Elections.set_office_requirement(Office, "total_term_limit", OR["TotalTermLimit"])
-                        if "SuccessiveTermLimit" in OR:
-                            await db.Elections.set_office_requirement(Office, "successive_term_limit", OR["SuccessiveTermLimit"])
-                    else:
+                    if not await db.Elections.get_office(Office):
                         return "The office you are trying to edit does not exist."
 
+                    OR = self.data["Constitution"]["OfficeRequirements"][Office]
+                    if "MinimumMessages" in OR:
+                        await db.Elections.set_office_requirement(Office, "min_messages", OR["MinimumMessages"])
+                    if "MinimumAge" in OR:
+                        await db.Elections.set_office_requirement(Office, "min_age_days", OR["MinimumAge"])
+                    if "TotalTermLimit" in OR:
+                        await db.Elections.set_office_requirement(Office, "total_term_limit", OR["TotalTermLimit"])
+                    if "SuccessiveTermLimit" in OR:
+                        await db.Elections.set_office_requirement(Office, "successive_term_limit", OR["SuccessiveTermLimit"])
         if "Rules" in self.data:
             if "Add" in self.data["Rules"]:
                 await db.Rules.set_rules(self.motion_id, self.data["Heading"]["Title"], self.data["Rules"]["Add"])

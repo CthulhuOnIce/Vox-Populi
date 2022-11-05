@@ -70,7 +70,7 @@ class RecordKeeping(commands.Cog):
             for topic in help_topics:
                 embed.add_field(name=topic, value=help_topics[topic], inline=False)
             await ctx.respond(embed=embed, ephemeral=True)
-        
+
         topic = topic.lower()
         if topic not in help_topics:
             await ctx.respond(f"Unknown topic: {topic}", ephemeral=True)
@@ -79,8 +79,7 @@ class RecordKeeping(commands.Cog):
     @slash_command(name='list_channels', description='List all channels available for news dispatches.')
     async def list_channels(self, ctx):
         channels = await db.Radio.frequencies()
-        msg = "List of channels:\n"
-        msg += "\n - ".join(channels)
+        msg = "List of channels:\n" + "\n - ".join(channels)
         await ctx.respond(msg, ephemeral=True)
 
     @slash_command(name='listen', description='Listen to a channel for dispatches')
@@ -128,8 +127,12 @@ class RecordKeeping(commands.Cog):
             except discord.NotFound:
                 await ctx.respond("User does not exist.", ephemeral=True)
                 return
-        
-        embed = discord.Embed(title=f"Player Information for {player.display_name}{ ' ('+player.name+')' if player.display_name != player.name else ''}", color=0x52be41)
+
+        embed = discord.Embed(
+            title=f"Player Information for {player.display_name}{f' ({player.name})' if player.display_name != player.name else ''}",
+            color=0x52BE41,
+        )
+
         embed.add_field(name="Name", value=player.display_name, inline=False)
         embed.add_field(name="Username", value=f"{player.name}#{player.discriminator}", inline=False)
         embed.add_field(name="ID", value=player.id, inline=False)
@@ -228,9 +231,14 @@ class RecordKeeping(commands.Cog):
     
     @tasks.loop(minutes=10)
     async def check_stat_cashout(self):
-        if datetime.datetime.utcnow().hour == 0:
-            if not datetime.datetime.utcnow().replace(tzinfo=pytz.UTC).date() == datetime.datetime.fromtimestamp(db.StatTracking["start_timestamp"]).replace(tzinfo=pytz.UTC).date():
-                stats = await db.StatTracking.cash_out()
+        if (
+            datetime.datetime.utcnow().hour == 0
+            and datetime.datetime.utcnow().replace(tzinfo=pytz.UTC).date()
+            != datetime.datetime.fromtimestamp(db.StatTracking["start_timestamp"])
+            .replace(tzinfo=pytz.UTC)
+            .date()
+        ):
+            stats = await db.StatTracking.cash_out()
 
 
 def setup(bot, config):

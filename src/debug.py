@@ -76,8 +76,7 @@ class Debug(commands.Cog):
         choices = await qi.quickBMC(ctx, f"Select options. Min: {min_answers} Max {max_answers}", candidates, max_answers=max_answers, min_answers=min_answers)
 
         msg_choices = [f"Choice #{i+1}: {choice}" for i, choice in enumerate(choices)]
-        msg = "```"
-        msg += "\n".join(msg_choices)
+        msg = "```" + "\n".join(msg_choices)
         msg += "```"
 
         await ctx.respond(msg, ephemeral=True)

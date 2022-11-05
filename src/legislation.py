@@ -63,12 +63,13 @@ class Legislation(commands.Cog):
             await ctx.respond("Motion does not exist.", ephemeral=True)
             return
 
-        if motion["votetype"] != "referendum":
-            if not offices.player_has_flag(ctx.author.id, "can_vote_motions"):
-                await ctx.respond("This motion is not a referendum.", ephemeral=True)
-                return
+        if motion["votetype"] != "referendum" and not offices.player_has_flag(
+            ctx.author.id, "can_vote_motions"
+        ):
+            await ctx.respond("This motion is not a referendum.", ephemeral=True)
+            return
 
-        if motion["votetype"] == "simple" or motion["votetype"] == "referendum":
+        if motion["votetype"] in ["simple", "referendum"]:
             if ctx.author.id in motion["voters"]:
                 await ctx.respond("You have already voted on this motion.", ephemeral=True)
                 return
@@ -99,9 +100,9 @@ class Legislation(commands.Cog):
         motion = await db.Motions.get_active_motion(motion_id)
         if not motion:
             motion = await db.Archives.get_archived_motion(motion_id)
-            if not motion:
-                await ctx.respond("Motion does not exist.", ephemeral=True)
-                return
+        if not motion:
+            await ctx.respond("Motion does not exist.", ephemeral=True)
+            return
         if motion["votetype"] == "simple":
             yea, nay = len(motion['votes']['Yea']), len(motion['votes']['Nay'])
             embed = discord.Embed(title=f"{motion_id}: {motion['title']}")
@@ -118,7 +119,6 @@ class Legislation(commands.Cog):
 
         if motion["votetype"] == "referendum":
             yea, nay = len(motion['votes']['Yea']), len(motion['votes']['Nay'])
-            embeds = []
             embed_ref = discord.Embed(title=f"{motion_id}: {motion['title']}")
             embed_ref.add_field(name="Author", value=f"<@{motion['author']}>")
             embed_ref.add_field(name="Introduced", value=ts.short_text(motion['submitted']))
@@ -127,7 +127,7 @@ class Legislation(commands.Cog):
             if await db.Constitution.get_key("ReferendumPublicVotes"):
                 embed_ref.add_field(name="Ratio / Required", value=f"{db.Motions.passratio(yea, nay)} / {motion['passratio']}", inline=False)
                 embed_ref.add_field(name="Votes", value=f"**Yea**: {yea}\n**Nay**: {nay}", inline=False)
-            embeds.append(embed_ref)
+            embeds = [embed_ref]
             if motion['original']['votetype'] == 'simple':
                 original = motion['original']
                 yea, nay = len(original['votes']['Yea']), len(original['votes']['Nay'])
@@ -140,7 +140,7 @@ class Legislation(commands.Cog):
                 original_embed.add_field(name="Original Nay", value="".join([f" - <@{x}>\n" for x in original["votes"]["Nay"]]) if original["votes"]["Nay"] else "None", inline=False)
                 embeds.append(original_embed)
             await qi.PaginateEmbeds(ctx, embeds=embeds)
-            
+
 
         if include_copy:  # holy fuck, holy fucking fuck, that transparency of yours is absurd
             await ctx.respond("Copy Attached", file=discord.File(io.BytesIO(motion["data_raw"]), filename=f"{motion_id}-{motion['title']}.yaml"), ephemeral=True)
@@ -184,10 +184,10 @@ class Legislation(commands.Cog):
                     yea_int = len(motion["votes"]["Yea"])
                     nay_int = len(motion["votes"]["Nay"])
                     passratio = db.Motions.passratio(yea_int, nay_int)
-                    
+
                     if passratio > motion["passratio"]:
                         error = await motion_obj.execute()
-                        
+
                         if error:
                             print(error)
                             await author.send(f"Your motion `{motion['_id']}` has encountered an error.\nError: {error}")

@@ -117,8 +117,7 @@ class Players_:
     
     async def get_officers(self, office:str):
         db = await create_connection("Players")
-        officers = await db.find({f"office.{office}.left_office": None}).to_list(None)
-        return officers
+        return await db.find({f"office.{office}.left_office": None}).to_list(None)
 
 Players = Players_()
 
@@ -215,14 +214,11 @@ class Rules_:
     async def motion_has_rules(self, motionid):
         db = await create_connection("Rules")
         motion = await db.find_one({"_id": motionid})
-        if not motion:
-            return False
-        return True
+        return bool(motion)
 
     async def get_all_rules(self): # -> {}
         db = await create_connection("Rules")
-        rules_from_db = await db.find({}).to_list(None)
-        return rules_from_db
+        return await db.find({}).to_list(None)
 
     async def get_rule_by_id(self, ruleid):
         if len(ruleid.split("-")) != 3:
@@ -232,9 +228,8 @@ class Rules_:
         motion = await db.find_one({"_id": rootmotion})
         if not motion:
             return
-        if not ruleid in motion["rules"]:
+        if ruleid not in motion["rules"]:
             return        # TODO: add to daily message count
-            return
         return motion["rules"]
 
     async def edit_rule(self, ruleid, new_text):
@@ -257,9 +252,7 @@ class Rules_:
     async def set_rules(self, motion_id, motion_title, rules:list):
         db = await create_connection("Rules")
         new_rule = {"_id": motion_id, "rules": {}, "motion_title": motion_title}
-        index = 0
-        for rule in rules:
-            index += 1
+        for index, rule in enumerate(rules, start=1):
             new_rule["rules"][f"{motion_id}-{index}"] = rule
         await db.insert_one(new_rule)
 
@@ -286,9 +279,7 @@ Rules = Rules_()
 class Motions_:
     
     def passratio(self, yea:int, nay:int):
-        if yea == 0 and nay == 0:
-            return 0.0
-        elif yea == 0:
+        if yea == 0 and nay == 0 or yea == 0:
             return 0.0
         elif nay == 0:
             1.0
@@ -297,9 +288,10 @@ class Motions_:
     async def motion_requires_referendum(self, motion_data:dict):
         if "Constitution" in motion_data and await Constitution.get_key("ConstitutionReferendum"):
             return True
-        if "Rules" in motion_data and await Constitution.get_key("RulesReferendum"):
-            return True
-        return False
+        return bool(
+            "Rules" in motion_data
+            and await Constitution.get_key("RulesReferendum")
+        )
 
     async def force_expire_motion(self, motion_id:str):
         db = await create_connection("Motions")
@@ -386,8 +378,7 @@ class Motions_:
 
     async def get_active_motions(self):
         db = await create_connection("Motions")
-        shid = await db.find().to_list(None)
-        return shid
+        return await db.find().to_list(None)
 
 Motions = Motions_()
 
@@ -495,26 +486,17 @@ class Elections_:
 
     async def set_flags(self, office_id, flags):
         db = await create_connection("Offices")
-        write_flags = []
-        for flag in flags:
-            if flag in self.valid_flags:
-                write_flags.append(flag)
+        write_flags = [flag for flag in flags if flag in self.valid_flags]
         await db.update_one({"_id": office_id}, {"$set": {"flags": write_flags}})
 
     async def add_flags(self, office_id, flags):
         db = await create_connection("Offices")
-        write_flags = []
-        for flag in flags:
-            if flag in self.valid_flags:
-                write_flags.append(flag)
+        write_flags = [flag for flag in flags if flag in self.valid_flags]
         await db.update_one({"_id": office_id}, {"$addToSet": {"flags": write_flags}})
     
     async def rem_flags(self, office_id, flags):
         db = await create_connection("Offices")
-        write_flags = []
-        for flag in flags:
-            if flag in self.valid_flags:
-                write_flags.append(flag)
+        write_flags = [flag for flag in flags if flag in self.valid_flags]
         await db.update_one({"_id": office_id}, {"$pullAll": {"flags": write_flags}})
 
     async def get_office(self, office_id):
@@ -555,11 +537,11 @@ class Radio_:
             frequency = {"_id": frequency, "channels": {}}
             await db.insert_one(frequency)
             return []
-        ret = []
-        for key in freq["channels"]:
-            if freq["channels"][key] <= importance:
-                ret.append(int(key))
-        return ret
+        return [
+            int(key)
+            for key in freq["channels"]
+            if freq["channels"][key] <= importance
+        ]
 
     async def add_listener(self, send_id, news_code, importance):
         db = await create_connection("Radio")
@@ -617,19 +599,20 @@ class Archives_:
             if is_in_server:
                 insert["joined"] = [datetime.datetime.now()]
                 insert["last_seen"] = datetime.datetime.now()
-                
+
             await db.insert_one(insert)
             return insert
-        
-        update = {}
 
-        for key in self.player_schema:
-            if key not in fetched:
-                update[key] = self.player_schema[key]
+        update = {
+            key: self.player_schema[key]
+            for key in self.player_schema
+            if key not in fetched
+        }
+
 
         if update:
             await db.update_one({"_id": player.id}, {"$set": update})
-        
+
         name         = fetched["name"][-1]["name"]         if len(fetched["name"])         else None
         display_name = fetched["display_name"][-1]["name"] if len(fetched["display_name"]) else None
         discriminator= fetched["discriminator"][-1]["name"]if len(fetched["discriminator"])else None
@@ -646,7 +629,7 @@ class Archives_:
         if discriminator != player.discriminator:
             update["discriminator"] = {"name": player.discriminator, "date": datetime.datetime.now()}
             discriminator = player.discriminator
-        
+
         if nickname != player.nick:
             update["nickname"] = {"name": player.nick, "date": datetime.datetime.now()}
             nickname = player.nick
@@ -698,7 +681,7 @@ class Archives_:
         d = int(tss[2].split(":")[0])
 
         # get current hour as int
-        h = int(tss[2].split(":")[1][0:2])
+        h = int(tss[2].split(":")[1][:2])
 
         # get current minute as int
         m = int(tss[2].split(":")[1][2:4])
@@ -748,9 +731,9 @@ class ReconstructedPlayer:
         recon_player = await self.db.find_one({"_id": player_id})
         if recon_player is None:
             raise ValueError("Player not found")
-        
+
         if time is None:
-            used_time = time if time else datetime.datetime.now()  # :troll:
+            used_time = time or datetime.datetime.now()
         # trim the list of names to only those that are valid at the time
         # then get the last one, which is the most recent one as of the given date
         # then extract the value from that entry

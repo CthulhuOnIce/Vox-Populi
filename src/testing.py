@@ -82,7 +82,7 @@ Test(archive_motion, "Archive motion")
 
 async def check_constitution():
     const = await database.Constitution.get_constitution()
-    if not "_id" in const:
+    if "_id" not in const:
         ValueError("Constitution did not write to db")
     const.pop("_id")  # now take it out to compare to template
     assert const == database.Constitution.default_constitution

@@ -329,7 +329,6 @@ class Office:
         self.seats            = office["seats"]
         self.role_id          = office["roleid"]
         self.generataion      = office["generations"]
-        self.unilateral_power = office["unilateral_power"]
 
         self.bot              = bot
         self.guild            = bot.get_guild(config['guild_id'])
@@ -412,6 +411,8 @@ def player_has_flag(player, flag):
     return False
 
 async def populate(bot, config):
+    global Offices
+    Offices = []
     offices = await db.Elections.get_all_offices()
     for office in offices:
         await Office().FromDB(bot, config, office)

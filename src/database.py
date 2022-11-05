@@ -396,52 +396,53 @@ class Elections_:
 
     valid_flags = ["can_submit_motions", "can_vote_motions", "can_veto_motions"]
 
+    insert =  {
+        "_id": "Legislator",
+        "roleid": C["officer-role"],
+        "flags": ["can_submit_motions", "can_vote_motions"],
+        "generations": 0,
+        "seats": 1,
+        "restrictions_queue": {  # gets copied into restrictions at the end of the next election
+            "min_messages": 0,
+            "min_age_days": 0,
+            "total_term_limit": 0,
+            "successive_term_limit": 0,
+        },
+        "restrictions": {  # 0 - disabled, anything else - enabled
+            "min_messages": 0,
+            "min_age_days": 0,
+            "total_term_limit": 0,
+            "successive_term_limit": 0
+        },
+        "regular_elections": {
+            "type": "simple",
+            "last_election": datetime.datetime.now() - datetime.timedelta(days=365),
+            "next_stage": None,
+            "term_length": 90,
+            "stages": {  # must add up to less than term_length, if less, the rest is considered normal term time
+                "nomination": 7,
+                "campaigning": 7,
+                "voting": 2,
+                "lame_duck": 7 # time after voting ends before the new term starts
+            },
+            "stage": "none",
+
+            # simple: {candidate_id: [voter_id, voter_id, ...], ...}
+            # ranked {voter_id: [candidate_id, candidate_id, ...], ...}
+            # approval {voter_id: [candidate_id, candidate_id, ...], ...}
+            "candidates": {},
+
+            "voters": [], # list of voter ids
+        }
+    }
+
     async def enable_vote(self, player_id):
         db = await create_connection("Players")
         await db.update_one({"_id": player_id}, {"$set": {"can_vote": True}})
 
     async def populate_offices(self):
         db = await create_connection("Offices")
-        insert =  {
-            "_id": "Legislator",
-            "roleid": C["officer-role"],
-            "flags": ["can_submit_motions", "can_vote_motions"],
-            "generations": 0,
-            "seats": 1,
-            "restrictions_queue": {  # gets copied into restrictions at the end of the next election
-                "min_messages": 0,
-                "min_age_days": 0,
-                "total_term_limit": 0,
-                "successive_term_limit": 0,
-            },
-            "restrictions": {  # 0 - disabled, anything else - enabled
-                "min_messages": 0,
-                "min_age_days": 0,
-                "total_term_limit": 0,
-                "successive_term_limit": 0
-            },
-            "regular_elections": {
-                "type": "simple",
-                "last_election": datetime.datetime.now() - datetime.timedelta(days=365),
-                "next_stage": None,
-                "term_length": 90,
-                "stages": {  # must add up to less than term_length, if less, the rest is considered normal term time
-                    "nomination": 7,
-                    "campaigning": 7,
-                    "voting": 2,
-                    "lame_duck": 7 # time after voting ends before the new term starts
-                },
-                "stage": "none",
-
-                # simple: {candidate_id: [voter_id, voter_id, ...], ...}
-                # ranked {voter_id: [candidate_id, candidate_id, ...], ...}
-                # approval {voter_id: [candidate_id, candidate_id, ...], ...}
-                "candidates": {},
-    
-                "voters": [], # list of voter ids
-            }
-        }
-        await db.insert_one(insert)
+        await db.insert_one(self.insert)
     
     async def remove_offices(self):
         db = await create_connection("Offices")

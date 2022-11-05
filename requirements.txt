@@ -4,3 +4,4 @@ motor
 dnspython
 python-dateutil
 gitpython
+mongomock-motor

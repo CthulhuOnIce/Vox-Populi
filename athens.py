@@ -10,7 +10,7 @@ import discord
 import yaml
 from discord.ext import commands
 
-from src import debug, electionmanager, legislation, recordkeeping, source, timestamps, offices
+from src import debug, electionmanager, legislation, recordkeeping, source, timestamps, offices, testing
 
 # from disputils import BotEmbedPaginator, BotConfirmation, BotMultipleChoice
 
@@ -51,6 +51,8 @@ async def on_ready():  # I just like seeing basic info like this
         exit()
     print("-----------------Info-----------------")
     print(f"Total Servers: {len(bot.guilds)}")
+    if "--debug" in sys.argv:
+        await testing.test(bot, C)
 
 @bot.event
 async def on_application_command_error(ctx, error):  # share certain errors with the user

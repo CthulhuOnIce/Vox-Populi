@@ -20,6 +20,7 @@ C = {}
 writers_room = []  # no duplicate motion submissions
 
 class Legislation(commands.Cog):
+    bot = None
     def __init__(self, bot):
         self.bot = bot
 

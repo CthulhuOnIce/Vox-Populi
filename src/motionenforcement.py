@@ -357,7 +357,7 @@ class Motion:
     }
 
     async def self_test(self):
-        
+
         def search_and_validate(dictionary, key, type, requires_presence = True):
             """Searches the dictionary and validates its type. If the key is not present, it will return True.
             If the presence isnt required and the key is not present, it will return False.
@@ -568,7 +568,7 @@ class Motion:
                                 #         payload["color"] = office["Color"]
                                 #     if payload:
                                 #         await role.edit(**payload)
-                                
+
                                 # if "Flags" in office:
                                 #     await db.Elections.set_flags(Office, office["Flags"])
 

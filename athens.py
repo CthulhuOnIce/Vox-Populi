@@ -54,7 +54,7 @@ async def on_connect():
 @bot.event
 async def on_ready():  # I just like seeing basic info like this
     C["bot"] = bot
-    C["guild"] = bot.get_guild(C["guild_id"] if not CI else int(os.environ[GUILD_ENV]))
+    C["guild"] = bot.get_guild(int(os.environ[GUILD_ENV]) if CI else C["guild_id"])
     if not C["guild"]:
         print(f"Guild not found, please check your config.yml (or {GUILD_ENV} env variable if running in CI)")
         exit()

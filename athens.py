@@ -13,15 +13,24 @@ from discord.ext import commands
 from src import debug, electionmanager, legislation, recordkeeping, source, timestamps, offices, testing
 
 # from disputils import BotEmbedPaginator, BotConfirmation, BotMultipleChoice
+CI = False
+TOKEN_ENV = "vox-token"
+GUILD_ENV = "vox-guild"
 
 try:
     with open("config.yml", "r") as r:
         C = yaml.load(r.read(), Loader=yaml.FullLoader)
 except FileNotFoundError:
+    if "token" in os.environ:
+        C = {"token": os.environ["token"]}
     print("No config.yml, please copy and rename config-example.yml and fill in the appropriate values.")
     exit()
 
 C["started"] = datetime.now()
+
+if "vox-token" in os.environ:
+    C["token"] = os.environ["vox-token"]
+    CI = True
 
 feedbacktimeout = []
 
@@ -45,13 +54,14 @@ async def on_connect():
 @bot.event
 async def on_ready():  # I just like seeing basic info like this
     C["bot"] = bot
-    C["guild"] = bot.get_guild(C["guild_id"])
+    C["guild"] = bot.get_guild(C["guild_id"] if not CI else int(os.environ[GUILD_ENV]))
     if not C["guild"]:
-        print("Guild not found, please check your config.yml")
+        print(f"Guild not found, please check your config.yml (or {GUILD_ENV} env variable if running in CI)")
         exit()
     print("-----------------Info-----------------")
     print(f"Total Servers: {len(bot.guilds)}")
-    if "--debug" in sys.argv:
+    # CI tests
+    if "--debug" in sys.argv or CI:
         await testing.test(bot, C)
 
 @bot.event

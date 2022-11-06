@@ -433,7 +433,10 @@ class Elections_:
 
     async def populate_offices(self):
         db = await create_connection("Offices")
-        await db.insert_one(self.insert)
+        insert = self.insert.copy()
+        role = await C["guild"].create_role(name="Legislator", mentionable=True, hoist=True, color=discord.Color(0xff2400))
+        insert["role"] = role.id
+        await db.insert_one(insert)
     
     async def remove_offices(self):
         db = await create_connection("Offices")

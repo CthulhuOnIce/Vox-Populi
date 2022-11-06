@@ -389,7 +389,7 @@ class Elections_:
 
     insert =  {
         "_id": "Legislator",
-        "roleid": C["officer-role"],
+        "roleid": 12346789087654321,
         "flags": ["can_submit_motions", "can_vote_motions"],
         "generations": 0,
         "seats": 1,
@@ -431,11 +431,14 @@ class Elections_:
         db = await create_connection("Players")
         await db.update_one({"_id": player_id}, {"$set": {"can_vote": True}})
 
-    async def populate_offices(self):
+    async def populate_offices(self, guild, create=False):
         db = await create_connection("Offices")
         insert = self.insert.copy()
-        role = await C["guild"].create_role(name="Legislator", mentionable=True, hoist=True, color=discord.Color(0xff2400))
-        insert["role"] = role.id
+        if create:
+            role = await C["guild"].create_role(name="Legislator", mentionable=True, hoist=True, color=discord.Color(0xff2400))
+            insert["role"] = role.id
+        elif "officer-role" in C:
+            insert["role"] = C["officer-role"]
         await db.insert_one(insert)
     
     async def remove_offices(self):

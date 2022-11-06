@@ -61,7 +61,7 @@ async def on_ready():  # I just like seeing basic info like this
     print("-----------------Info-----------------")
     print(f"Total Servers: {len(bot.guilds)}")
     # CI tests
-    if "--debug" in sys.argv or CI:
+    if "--test" in sys.argv or CI:
         await testing.test(bot, C)
 
 @bot.event

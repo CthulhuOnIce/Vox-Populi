@@ -42,7 +42,7 @@ async def swap_database():
 Test(swap_database, "Swap database")
 
 async def populate_offices():
-    await database.Elections.populate_offices()
+    await database.Elections.populate_offices(C["guild"])
     con = await database.create_connection("Offices")
     offices_ = await con.find().to_list(None)
     assert len(offices_) == 1

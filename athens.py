@@ -10,18 +10,27 @@ import discord
 import yaml
 from discord.ext import commands
 
-from src import debug, electionmanager, legislation, recordkeeping, source, timestamps
+from src import debug, electionmanager, legislation, recordkeeping, source, timestamps, offices, testing
 
 # from disputils import BotEmbedPaginator, BotConfirmation, BotMultipleChoice
+CI = False
+TOKEN_ENV = "vox-token"
+GUILD_ENV = "vox-guild"
 
 try:
     with open("config.yml", "r") as r:
         C = yaml.load(r.read(), Loader=yaml.FullLoader)
 except FileNotFoundError:
+    if "token" in os.environ:
+        C = {"token": os.environ["token"]}
     print("No config.yml, please copy and rename config-example.yml and fill in the appropriate values.")
     exit()
 
 C["started"] = datetime.now()
+
+if "vox-token" in os.environ:
+    C["token"] = os.environ["vox-token"]
+    CI = True
 
 feedbacktimeout = []
 
@@ -38,14 +47,22 @@ source.setup(bot, C)
 
 
 @bot.event
+async def on_connect():
+    # start subsystems
+    await offices.populate(bot, C)
+
+@bot.event
 async def on_ready():  # I just like seeing basic info like this
     C["bot"] = bot
-    C["guild"] = bot.get_guild(C["guild_id"])
+    C["guild"] = bot.get_guild(int(os.environ[GUILD_ENV]) if CI else C["guild_id"])
     if not C["guild"]:
-        print("Guild not found, please check your config.yml")
+        print(f"Guild not found, please check your config.yml (or {GUILD_ENV} env variable if running in CI)")
         exit()
     print("-----------------Info-----------------")
     print(f"Total Servers: {len(bot.guilds)}")
+    # CI tests
+    if "--test" in sys.argv or CI:
+        await testing.test(bot, C)
 
 @bot.event
 async def on_application_command_error(ctx, error):  # share certain errors with the user

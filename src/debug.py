@@ -1,6 +1,7 @@
 # just a template to copy and paste for use in developing cogs in the future
 
 from typing import Optional
+from xml.dom.pulldom import default_bufsize
 
 import discord
 import yaml
@@ -10,18 +11,20 @@ from discord.ext import commands, tasks
 from . import database as db
 from . import motionenforcement as MM
 from . import quickinputs as qi
+from . import offices
 
 C = {}
+debug = discord.SlashCommandGroup("debug", "debugging commands")
 
 class Debug(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @slash_command(name='dpag', description='Test embed paginator')
+    @debug.command(name='dpag', description='Test embed paginator')
     async def dpag(self, ctx):
         await qi.PaginateEmbeds(ctx, [Embed(title="Test 1"), Embed(title="Test 2"), Embed(title="Test 3")])
     
-    @slash_command(name='flmo', description='Clear all motions.')
+    @debug.command(name='flmo', description='Clear all motions.')
     async def flmo(self, ctx):
         if not await qi.quickConfirm(ctx, "Are you sure you want to clear all motions?"):
             return
@@ -29,25 +32,40 @@ class Debug(commands.Cog):
         await dbo.drop()
         await ctx.respond("All motions cleared.", ephemeral=True)
 
-    @slash_command(name='popo', description='Run db.populate_offices()')
+    @debug.command(name='popo', description='Run db.populate_offices()')
     @commands.is_owner()
     async def popo(self, ctx):
         await db.Elections.populate_offices()
         await ctx.respond("Done!")
 
-    @slash_command(name='roff', description='Delete all offices')
+    @debug.command(name='term', description='Start a python terminal')
+    async def term(self, ctx):
+        await ctx.respond("Starting terminal...")
+        while True:
+            inp = input(">>> ")
+            try:
+                print(eval(inp))
+            except Exception as e:
+                try:
+                    exec(inp)
+                except Exception as e:
+                    print(e)
+
+    @debug.command(name='roff', description='Delete all offices')
     @commands.is_owner()
     async def roff(self, ctx):
         await db.Elections.remove_offices()
         await ctx.respond("Done!")
 
-    @slash_command(name='repopo', description='roff + popo')
+    @debug.command(name='repopo', description='roff + popo')
     async def repopo(self, ctx):
         await db.Elections.remove_offices()
         await db.Elections.populate_offices()
+        offices.Offices = []
+        await offices.populate(self.bot, C)
         await ctx.respond("Done!")
-
-    @slash_command(name='tmc', description='Test qi.quickBMC')
+    
+    @debug.command(name='tmc', description='Test qi.quickBMC')
     @commands.is_owner()
     @option('num_options', int, description='Number of options in the list')
     @option('min_answers', int, description='Minimum number of answers')
@@ -58,13 +76,18 @@ class Debug(commands.Cog):
         choices = await qi.quickBMC(ctx, f"Select options. Min: {min_answers} Max {max_answers}", candidates, max_answers=max_answers, min_answers=min_answers)
 
         msg_choices = [f"Choice #{i+1}: {choice}" for i, choice in enumerate(choices)]
-        msg = "```"
-        msg += "\n".join(msg_choices)
+        msg = "```" + "\n".join(msg_choices)
         msg += "```"
 
         await ctx.respond(msg, ephemeral=True)
 
-    @slash_command(name='aleg', description='Instantly execute a yaml file as a motion.')
+    @debug.command(name='cout', description='Force cashout.')
+    @commands.is_owner()
+    async def cout(self, ctx):
+        x = await db.StatTracking.cash_out()
+        await ctx.respond(x)
+
+    @debug.command(name='aleg', description='Instantly execute a yaml file as a motion.')
     @commands.is_owner()
     async def aleg(self, ctx):
         await ctx.respond("Upload a yaml file to execute a motion.")
@@ -97,25 +120,6 @@ class Debug(commands.Cog):
             await edit_me.edit(content=x)
             return
         await edit_me.edit(content="Motion executed.")
-
-    @commands.user_command(name="Make Legislator")  # create a user command for the supplied guilds
-    @commands.is_owner()
-    async def make_legislator(self, ctx, member: discord.Member):  # user commands return the member
-
-        if not await db.Elections.is_officer(member.id, "Legislator"):
-            await db.Elections.set_new_officer(member.id, "Legislator")
-            await ctx.respond(f"Made {member.mention} a legislator.", ephemeral=True)
-        else:
-            await ctx.respond(f"{member.mention} is already a legislator.", ephemeral=True)
-    
-    @commands.user_command(name="Fire Legislator")  # create a user command for the supplied guilds
-    @commands.is_owner()
-    async def fire_legislator(self, ctx, member: discord.Member):  # user commands return the member
-        if await db.Elections.is_officer(member.id, "Legislator"):
-            await db.Elections.remove_officer(member.id, "Legislator")
-            await ctx.respond(f"Fired {member.mention} from the legislature.", ephemeral=True)
-        else:
-            await ctx.respond(f"{member.mention} is not a legislator.", ephemeral=True)
 
 def setup(bot, config):
     global C

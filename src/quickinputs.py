@@ -110,9 +110,7 @@ class EmbedPaginator(discord.ui.View):
     def __init__(self, ctx, embeds):
         super().__init__(timeout=60)
         self.ctx = ctx
-        counter = 0
-        for embed in embeds:
-            counter += 1
+        for counter, embed in enumerate(embeds, start=1):
             if embed.footer.text == discord.Embed.Empty:
                 embed.set_footer(text=f"Page {counter}/{len(embeds)}")
         self.embeds = embeds

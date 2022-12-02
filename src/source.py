@@ -55,6 +55,7 @@ class Source(commands.Cog):
 
     @slash_command(name='commits', description='List all commits')
     async def commits(self, ctx):
+
         repo = git.Repo(search_parent_directories=True)
         embeds = []
         for commit in repo.iter_commits():
@@ -67,14 +68,14 @@ class Source(commands.Cog):
     @slash_command(name='linkgithub', description='Link your GitHub account to your Discord account.')
     async def linkgithub(self, ctx):
         alphabet ="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-        key = ''.join(random.choice(alphabet) for i in range(32))
+        key = ''.join(random.choice(alphabet) for _ in range(32))
         try:
             await ctx.author.send(f"Key: `{key}`\nPlease create a github gist with this key somewhere in the content.\nThen, send the **raw** link to the gist here. You have 5 minutes.")
             await ctx.interaction.response.send_message('Check your DMs!', ephemeral=True)
         except discord.Forbidden:
             await ctx.respond("I couldn't DM you. Please enable DMs from server members.", ephemeral=True)
             return
-        
+
         msg = None
 
         try:
@@ -82,11 +83,11 @@ class Source(commands.Cog):
         except asyncio.TimeoutError:
             await ctx.author.send("You took too long to respond.")
             return
-        
+
         if msg is None:
             await ctx.author.send("You took too long to respond.")
             return
-        
+
         gist_url = msg.clean_content
 
         # if the gist size is > 1KB, refuse

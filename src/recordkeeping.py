@@ -8,7 +8,7 @@ from typing import Optional
 import discord
 import pytz
 from discord import option, slash_command
-from discord.ext import commands
+from discord.ext import commands, tasks
 
 from . import database as db
 from . import quickinputs as qi
@@ -70,7 +70,7 @@ class RecordKeeping(commands.Cog):
             for topic in help_topics:
                 embed.add_field(name=topic, value=help_topics[topic], inline=False)
             await ctx.respond(embed=embed, ephemeral=True)
-        
+
         topic = topic.lower()
         if topic not in help_topics:
             await ctx.respond(f"Unknown topic: {topic}", ephemeral=True)
@@ -79,8 +79,7 @@ class RecordKeeping(commands.Cog):
     @slash_command(name='list_channels', description='List all channels available for news dispatches.')
     async def list_channels(self, ctx):
         channels = await db.Radio.frequencies()
-        msg = "List of channels:\n"
-        msg += "\n - ".join(channels)
+        msg = "List of channels:\n" + "\n - ".join(channels)
         await ctx.respond(msg, ephemeral=True)
 
     @slash_command(name='listen', description='Listen to a channel for dispatches')
@@ -113,13 +112,6 @@ class RecordKeeping(commands.Cog):
             embed.add_field(name=rule, value=const[rule])
         await ctx.respond(embed=embed, ephemeral=True)
 
-    @slash_command(name='check_eligibility', description='Get information about a User or Player.')
-    async def check_eligibility(self, ctx, office:str):
-        if not await db.Elections.get_office(office):
-            await ctx.respond("Office not found.")
-            return
-        await ctx.respond(await db.Elections.is_eligible_for_office(ctx.author.id, office))
-
     @slash_command(name='player_info', description='Get information about a User or Player.')
     @option('player_id', str, description='Target\'s User ID')
     async def player_info(self, ctx, player_id:str):
@@ -135,16 +127,22 @@ class RecordKeeping(commands.Cog):
             except discord.NotFound:
                 await ctx.respond("User does not exist.", ephemeral=True)
                 return
-        
-        embed = discord.Embed(title=f"Player Information for {player.display_name}", color=0x52be41)
+
+        embed = discord.Embed(
+            title=f"Player Information for {player.display_name}{f' ({player.name})' if player.display_name != player.name else ''}",
+            color=0x52BE41,
+        )
+
         embed.add_field(name="Name", value=player.display_name, inline=False)
+        embed.add_field(name="Username", value=f"{player.name}#{player.discriminator}", inline=False)
         embed.add_field(name="ID", value=player.id, inline=False)
         embed.add_field(name="Created", value=ts.simple_day(player.created_at), inline=False)
-        embed.set_thumbnail(url=player.avatar)
-        player_info = await db.StatTracking.find_player(player.id)
+        if player.avatar:
+            embed.set_thumbnail(url=player.avatar)
+        player_info = await db.Players.find_player(player.id)
         if player_info:
             embed.add_field(name="Message Count", value=player_info["messages"], inline=False)
-            embed.add_field(name="Last Seen", value=ts.simple_day(player_info["last_message"]), inline=False)
+            embed.add_field(name="Last Seen", value=ts.simple_datetime(player_info["last_seen"]), inline=False)
             if "left" in player_info:
                 embed.add_field(name="left", value=player_info["left"], inline=False)
             status = "Active - Can Vote" if player_info["can_vote"] else "Active - Cannot Vote"
@@ -199,20 +197,21 @@ class RecordKeeping(commands.Cog):
     async def on_member_leave(self, member):
         if member.bot:
             return
+        await db.StatTracking.increment_leaves()
         await db.Archives.update_player(member)
-        await db.StatTracking.remove_player(member.id)
     
     @commands.Cog.listener()
     async def on_member_join(self, member):
         if member.bot:
             return
+        db.StatTracking.increment_joins()
         await db.Archives.update_player(member)
     
     @commands.Cog.listener()
     async def on_member_update(self, before, after):
         if after.bot:
             return
-        await db.Archives.update_player(after)
+        db.Archives.update_player(after)
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -220,15 +219,27 @@ class RecordKeeping(commands.Cog):
             return
         if message.guild is not C["guild"]:
             return
-        # TODO: add to daily message count
-        messages = await db.Archives.update_player(message.author, True)
-        player = await db.StatTracking.find_player(message.author.id)
-        if not player["can_vote"]:
+        db.StatTracking.increment_daily_messages(message.author)
+        messages = await db.Archives.update_player(message.author, True)  # true = update message count
+        player = await db.Players.find_player(message.author.id)
+        if not player["can_vote"]:  # dont bother doing all the work if they can vote anyway
             const = await db.Constitution.get_constitution()
             if messages >= const["VoterMinMessages"] and message.author.created_at <= datetime.datetime.utcnow().replace(tzinfo=pytz.UTC) - datetime.timedelta(days=const["VoterAccountAge"]):
                 await message.channel.send(f"Congratulations {message.author.mention}!\nYou have reached {const['VoterMinMessages']} messages and an account age of {const['VoterAccountAge']} days.\nYou can now vote in elections!")
                 self.bot.dispatch(event_name="new_voter", member=message.author)
                 await db.Elections.enable_vote(message.author.id)
+    
+    @tasks.loop(minutes=10)
+    async def check_stat_cashout(self):
+        if (
+            datetime.datetime.utcnow().hour == 0
+            and datetime.datetime.utcnow().replace(tzinfo=pytz.UTC).date()
+            != datetime.datetime.fromtimestamp(db.StatTracking["start_timestamp"])
+            .replace(tzinfo=pytz.UTC)
+            .date()
+        ):
+            stats = await db.StatTracking.cash_out()
+
 
 def setup(bot, config):
     global C

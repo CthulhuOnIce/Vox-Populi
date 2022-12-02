@@ -32,14 +32,68 @@ Constitution:
     VerificationLevel: 
     # discord.gg/{VanityCode}
     VanityCode: AthensProject
-  OfficeRequirements:
-    Legislator:
-      MinimumMessages: 0 # 0 - disabled, anything else - enabled
-      MinimumAge: 0  # minimum time in days since the user first joined
-      TotalTermLimit: 0
-      SuccessiveTermLimit: 0
-  Events:
-    SnapElections:  # whether or not to hold snap elections when this passes
+  Offices:
+    CreateOffice:
+      - Name: Judge
+        Color: 0x2
+        Seats: 10
+        DecisionMaking: individual  # individual - unilateral power to exercise powers, collective - must be voted on
+        SetFlags:
+          - can_veto_motions
+        AddFlags:
+          - can_veto_motions
+        RemFlags:
+          - can_veto_motions
+        OfficeRequirements:
+          MinimumMessages: 0 # 0 - disabled, anything else - enabled
+          MinimumAge: 0  # minimum time in days since the user first joined
+          TotalTermLimit: 0
+          SuccessiveTermLimit: 0
+        # appointers can appoint people directly as opposed to holding elections, if both appointers and regular elections are set, 
+        # i dont know what to do yet!
+        Appointers:  
+          - Legislator
+        Elections:
+          Type: simple
+          TermLength: 60
+          Stages:
+            Nomination: 7
+            Campaigning: 7
+            Voting: 2
+            LameDuck: 7
+    EditOffice:
+      - Name: Judge
+        NewName: New name for the role
+        Color: 0x2
+        Mentionable: True
+        Hoist: true
+        Seats: 10
+        DecisionMaking: individual  # individual - unilateral power to exercise powers, collective - must be voted on
+        SetFlags:
+          - can_veto_motions
+        AddFlags:
+          - can_veto_motions
+        RemFlags:
+          - can_veto_motions
+        OfficeRequirements:
+          MinimumMessages: 0 # 0 - disabled, anything else - enabled
+          MinimumAge: 0  # minimum time in days since the user first joined
+          TotalTermLimit: 0
+          SuccessiveTermLimit: 0
+        Appointers:
+          - Legislator
+        Elections:
+          Type: simple
+          TermLength: 60
+          # length of time for each election stage, sum must not be greater than TermLength
+          # if set to 0, period will last 1 hour
+          Stages:
+            Nomination: 7
+            Campaigning: 7
+            Voting: 2
+            LameDuck: 7
+      DeleteOffice:
+        - Judge 
 Rules:
   Add:
     - This is a new rule that will be added to the bill
@@ -52,7 +106,6 @@ Rules:
     - 221010-46923-4: This will be the new text of the 221010-469230-4 Rule
   Amend:
     - 221010-46923: This will create a new rule under this motion.
-
 Body:
   - CreateTextChannel:
       Name: Name of the channel to be created

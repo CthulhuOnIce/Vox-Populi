@@ -4,3 +4,5 @@ motor
 dnspython
 python-dateutil
 gitpython
+mongomock_motor
+colorama

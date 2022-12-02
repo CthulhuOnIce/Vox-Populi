@@ -524,6 +524,7 @@ class Motion:
             if "Offices" in self.data["Constitution"]:
                 for cmd in self.data["Constitution"]["Offices"]:
                     data = self.data["Constitution"]["Offices"][cmd]
+
                     if cmd == "EditOffice":
                         office = offices.get_office(data["Name"])
 
@@ -534,25 +535,30 @@ class Motion:
                             # TODO: handle this
                             continue
 
-                        if "NewName" in data:
-                            office.name = data["Name"]
-                            await role.edit(name=data["Name"])
-
-                        if "Color" in data:
-                            office.color = data["Color"]
-                            await role.edit(color=discord.Color(data["Color"]))
-
                         if "Seats" in data:
                             office.seats = data["Seats"]
 
+
+                        edit_package = {}
+
+                        if "NewName" in data:
+                            office.name = data["Name"]
+                            edit_package["name"] = data["Name"]
+
+                        if "Color" in data:
+                            office.color = data["Color"]
+                            edit_package["color"] = data["Color"]
+
                         if "Hoist" in data:
-                            await role.edit(hoist=data["Hoist"])
+                            edit_package["hoist"] = data["Hoist"]
 
                         if "Mentionable" in data:
-                            await role.edit(mentionable=data["Mentionable"])
-
-
-
+                            edit_package["mentionable"] = data["Mentionable"]
+                            
+                        
+                        if edit_package is not {}:  # if anything is being changed, change it all in one sweep
+                            await role.edit(**edit_package)
+                            
                                 # office = self.data["Constitution"]["Offices"][Office]
                                 # OF = await db.Elections.get_office(Office)
                                 # if not OF: continue  # TODO: error

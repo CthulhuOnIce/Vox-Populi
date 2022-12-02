@@ -554,11 +554,11 @@ class Motion:
 
                         if "Mentionable" in data:
                             edit_package["mentionable"] = data["Mentionable"]
-                            
-                        
+
+
                         if edit_package is not {}:  # if anything is being changed, change it all in one sweep
                             await role.edit(**edit_package)
-                            
+
                                 # office = self.data["Constitution"]["Offices"][Office]
                                 # OF = await db.Elections.get_office(Office)
                                 # if not OF: continue  # TODO: error
